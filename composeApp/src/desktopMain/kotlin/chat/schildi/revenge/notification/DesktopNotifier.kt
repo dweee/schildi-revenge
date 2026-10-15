@@ -1,5 +1,6 @@
 package chat.schildi.revenge.notification
 
+import chat.schildi.revenge.Destination
 import chat.schildi.revenge.UiState
 import co.touchlab.kermit.Logger
 import io.element.android.libraries.matrix.api.media.MediaSource
@@ -25,6 +26,20 @@ object DesktopNotifier {
                 appName = getString(Res.string.app_title_short),
                 smallIcon = Res.getUri("drawable-xhdpi/ic_launcher.png")
             )
+        )
+    }
+
+    private fun onNotificationActivated(id: NotificationId) {
+        val room = id as? NotificationId.ForRoom
+        val sessionId = id.sessionId
+        if (room == null || sessionId == null) {
+            // Nothing specific to open, but still bring the app back if it is hidden
+            UiState.setMinimized(false)
+            return
+        }
+        UiState.openWindow(
+            Destination.Conversation(sessionId = sessionId, roomId = room.roomId),
+            preferNewTask = false,
         )
     }
 
@@ -58,6 +73,7 @@ object DesktopNotifier {
                 title = title,
                 message = message,
                 largeImage = largeIconFile?.path,
+                onActivated = { onNotificationActivated(id) },
             )
         } catch (t: Throwable) {
             log.e("Failed to send notification", t)

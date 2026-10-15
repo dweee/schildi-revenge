@@ -792,7 +792,7 @@ class KeyboardActionHandler(
             it.resolveMenuEntries(focusableTargets[it.focusId])
         }?.takeIf { it.isNotEmpty() }
         // Disallow plain keybindings of keys handled by text fields
-        if (!event.isCtrlPressed && contextMenu == null) {
+        if (!event.isPrimaryModifierPressed && contextMenu == null) {
             val currentActiveEditableId = activeEditAbleId.value
             focusedKeyConsumers.value.forEach { (focusId, role) ->
                 if (role.consumesKeyWhitelist != null && event.key !in role.consumesKeyWhitelist) {
@@ -3084,7 +3084,7 @@ private fun KeyEvent.toTrigger(): KeyTrigger? {
         rawKey = rawKey,
         shift = isShiftPressed,
         alt = isAltPressed,
-        ctrl = isCtrlPressed,
+        ctrl = isPrimaryModifierPressed,
     )
 }
 

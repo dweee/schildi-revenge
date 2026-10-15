@@ -1,0 +1,11 @@
+{
+  "aarch64-darwin": [
+    "schildi-revenge"
+  ],
+  "x86_64-linux": [
+    "schildi-revenge"
+  ],
+  "aarch64-linux": [
+    "schildi-revenge"
+  ]
+}

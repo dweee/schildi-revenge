@@ -470,6 +470,10 @@ compose.desktop {
             macOS {
                 appCategory = "public.app-category.social-networking"
                 minimumSystemVersion = "11.0"
+                // Menu bar / dock name; the default would be the package name without a space
+                dockName = "SchildiChat Revenge"
+                // Generated from the launcher PNG by the Nix package; the default is the Java icon
+                project.file("../graphics/ic_launcher.icns").takeIf { it.exists() }?.let { iconFile.set(it) }
 
                 infoPlist {
                     extraKeysRawXml = """
