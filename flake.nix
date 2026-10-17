@@ -16,6 +16,8 @@
           });
         in if pkgs.stdenv.hostPlatform.isDarwin
           then pkgs.callPackage ./nix/package.nix { schildi-revenge = sourcePackage; }
+          else if pkgs.stdenv.hostPlatform.isAarch64
+          then pkgs.callPackage ./nix/aarch64-linux.nix { schildi-revenge = sourcePackage; }
           else sourcePackage;
     in {
       packages = forAllSystems (system:
