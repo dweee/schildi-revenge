@@ -12,7 +12,16 @@
         let pkgs = import nixpkgs { inherit system; };
         in let
           sourcePackage = pkgs.schildi-revenge.overrideAttrs (_old: {
-            src = nixpkgs.lib.cleanSource self;
+            # Workflow and sync-state changes do not alter the application.
+            src = nixpkgs.lib.cleanSourceWith {
+              src = self;
+              filter = path: type:
+                let
+                  relative = nixpkgs.lib.removePrefix "${self}/" (toString path);
+                  top = builtins.head (nixpkgs.lib.splitString "/" relative);
+                in nixpkgs.lib.cleanSourceFilter path type
+                  && !(builtins.elem top [ ".github" ".forgejo" ".fork-ci" ".fork-ci.json" "ci" ]);
+            };
           });
         in if pkgs.stdenv.hostPlatform.isDarwin
           then pkgs.callPackage ./nix/package.nix { schildi-revenge = sourcePackage; }
