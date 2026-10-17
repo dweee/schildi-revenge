@@ -11,7 +11,12 @@
       packageFor = system:
         let pkgs = import nixpkgs { inherit system; };
         in let
-          sourcePackage = pkgs.schildi-revenge.overrideAttrs (_old: {
+          sourcePackage = pkgs.schildi-revenge.overrideAttrs (finalAttrs: _old: {
+            # The fork SDK lock can advance independently of the nixpkgs release.
+            cargoDeps = pkgs.rustPlatform.fetchCargoVendor {
+              inherit (finalAttrs) src cargoRoot;
+              hash = "sha256-/nSM4ff10gOJuTpNNeb42DtaolPu3Z9Zy9CiBZ0v+Oc=";
+            };
             # Workflow and sync-state changes do not alter the application.
             src = nixpkgs.lib.cleanSourceWith {
               src = self;
