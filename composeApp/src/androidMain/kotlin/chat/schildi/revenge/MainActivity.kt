@@ -1,10 +1,12 @@
 package chat.schildi.revenge
 
+import android.app.ActivityManager
 import android.content.Intent
 import android.net.Uri
 import android.os.Build
 import android.os.Bundle
 import androidx.activity.ComponentActivity
+import androidx.activity.OnBackPressedCallback
 import androidx.activity.SystemBarStyle
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
@@ -21,6 +23,7 @@ import androidx.compose.ui.geometry.toRect
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalClipboard
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.LocalUriHandler
@@ -54,6 +57,16 @@ class MainActivity : ComponentActivity() {
     private var destinationStateHolder: DestinationStateHolder? = null
     private var pendingLink: String? = null
 
+    private val backCallback = object : OnBackPressedCallback(true) {
+        override fun handleOnBackPressed() {
+            if (shouldRemoveTaskOnBack()) {
+                finishAndRemoveTask()
+            } else {
+                finish()
+            }
+        }
+    }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         val splashScreen = installSplashScreen()
         splashScreen.setKeepOnScreenCondition {
@@ -61,6 +74,8 @@ class MainActivity : ComponentActivity() {
         }
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
+
+        onBackPressedDispatcher.addCallback(this, backCallback)
 
         windowId = savedInstanceState?.getInt(EXTRA_WINDOW_ID, windowId) ?: windowId
 
@@ -102,7 +117,10 @@ class MainActivity : ComponentActivity() {
             }
 
             val scope = rememberCoroutineScope()
-            val handler = remember { KeyboardActionHandler(scope, windowId) }
+            val context = LocalContext.current
+            val handler = remember(context, scope) {
+                KeyboardActionHandler(context, scope, windowId)
+            }
             LaunchedEffect(handler) {
                 keyHandler = handler
                 pendingLink?.let(handler::consumeLink)
@@ -141,6 +159,7 @@ class MainActivity : ComponentActivity() {
         super.onResume()
         keyHandler?.onWindowFocusChanged(true)
         androidWindowManager.onResume(this)
+        backCallback.isEnabled = isTaskRoot
     }
 
     override fun onNewIntent(intent: Intent) {
@@ -262,6 +281,16 @@ class MainActivity : ComponentActivity() {
     override fun onWindowFocusChanged(hasFocus: Boolean) {
         super.onWindowFocusChanged(hasFocus)
         keyHandler?.onWindowFocusChanged(hasFocus)
+    }
+
+    private fun shouldRemoveTaskOnBack(): Boolean {
+        if (!isTaskRoot) return false
+        val appTasks = runCatching {
+            getSystemService(ActivityManager::class.java)?.appTasks
+        }.onFailure {
+            log.w("Failed to retrieve own app tasks", it)
+        }.getOrNull() ?: return false
+        return appTasks.size > 1
     }
 
     override fun onDestroy() {

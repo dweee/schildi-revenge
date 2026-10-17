@@ -18,6 +18,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
@@ -52,14 +53,20 @@ import chat.schildi.revenge.config.keybindings.Action
 import chat.schildi.revenge.database.revengeDatabase
 import chat.schildi.theme.scExposures
 import co.touchlab.kermit.Logger
+import io.element.android.libraries.matrix.api.core.SessionId
 import kotlinx.collections.immutable.persistentListOf
 import kotlinx.collections.immutable.toPersistentList
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.delay
 import org.jetbrains.compose.resources.stringResource
 import shire.res.generated.resources.Res
 import shire.res.generated.resources.pref_push_registrations_info_none
 import shire.res.generated.resources.pref_push_registrations_info_summary
+import shire.res.generated.resources.pref_push_registrations_info_usage
 import kotlin.math.roundToInt
+import kotlin.time.Duration.Companion.hours
+import kotlin.time.Duration.Companion.milliseconds
+import kotlin.time.Duration.Companion.minutes
 
 fun LazyListScope.renderPref(
     pref: AbstractScPref,
@@ -75,10 +82,12 @@ fun LazyListScope.renderPref(
         }
         is ScViewOnlyPref -> {
             item {
-                ScPrefCategoryHeader(
-                    title = stringResource(pref.titleRes),
-                    isFirst = isFirst,
-                )
+                if (pref.kind.withHeader) {
+                    ScPrefCategoryHeader(
+                        title = stringResource(pref.titleRes),
+                        isFirst = isFirst,
+                    )
+                }
             }
             item(key = pref.kind.name) {
                 pref.Rendered()
@@ -314,8 +323,41 @@ fun <T> ScListPref<T>.Rendered() {
 @Composable
 fun ScViewOnlyPref.Rendered() {
     when (kind) {
+        ScViewOnlyPref.Kind.PUSH_HISTORY -> {
+            val dao = revengeDatabase.pushNotificationDao()
+            val since by produceState(System.currentTimeMillis() - 24.hours.inWholeMilliseconds) {
+                while (true) {
+                    delay(1.minutes)
+                    value = System.currentTimeMillis() - 24.hours.inWholeMilliseconds
+                }
+            }
+            val stats = remember(dao, since) { dao.followTotalPushCountAndDuration(since) }
+                .collectAsState(null).value
+            ScPrefLayout(
+                title = stringResource(titleRes),
+                secondaryText = stringResource(
+                    Res.string.pref_push_registrations_info_usage,
+                    stats?.first ?: 0L,
+                    (stats?.second ?: 0L).milliseconds.toString(),
+                ),
+                clickAction = {
+                    InteractionAction.Navigate {
+                        Destination.PushHistory()
+                    }
+                }
+            )
+        }
         ScViewOnlyPref.Kind.PUSH_REGISTRATIONS -> {
-            val registrations = revengeDatabase.pushNotificationDao().followPushRegistrations()
+            val dao = revengeDatabase.pushNotificationDao()
+            val registrations = remember(dao) { dao.followPushRegistrations() }
+                .collectAsState(null).value
+            val since by produceState(System.currentTimeMillis() - 24.hours.inWholeMilliseconds) {
+                while (true) {
+                    delay(1.minutes)
+                    value = System.currentTimeMillis() - 24.hours.inWholeMilliseconds
+                }
+            }
+            val stats = remember(dao, since) { dao.followPushStats(since) }
                 .collectAsState(null).value
             if (registrations == null) {
                 Box(Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
@@ -328,6 +370,14 @@ fun ScViewOnlyPref.Rendered() {
             } else {
                 Column {
                     registrations.forEach { registration ->
+                        val usage = stats?.find {
+                            it.sessionId == registration.sessionId
+                        }
+                        val usageText = if (stats == null) "" else "\n" + stringResource(
+                            Res.string.pref_push_registrations_info_usage,
+                            usage?.pushCount ?: 0L,
+                            (usage?.duration ?: 0L).milliseconds.toString(),
+                        )
                         ScPrefLayout(
                             title = registration.sessionId,
                             secondaryText = stringResource(
@@ -335,7 +385,12 @@ fun ScViewOnlyPref.Rendered() {
                                 registration.endpoint ?: "",
                                 registration.gateway ?: "",
                                 registration.homeserverRegistered.toString(),
-                            )
+                            ) + usageText,
+                            clickAction = {
+                                InteractionAction.Navigate {
+                                    Destination.PushHistory(SessionId(registration.sessionId))
+                                }
+                            },
                         )
                     }
                 }

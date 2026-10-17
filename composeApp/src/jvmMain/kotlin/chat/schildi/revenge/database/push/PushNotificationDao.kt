@@ -5,9 +5,12 @@ import androidx.room3.Delete
 import androidx.room3.Insert
 import androidx.room3.OnConflictStrategy
 import androidx.room3.Query
+import androidx.room3.Transaction
 import androidx.room3.Update
 import androidx.room3.Upsert
 import kotlinx.coroutines.flow.Flow
+
+private const val VISUAL_QUERY_LIMIT = 1000
 
 @Dao
 interface PushNotificationDao {
@@ -78,4 +81,79 @@ interface PushNotificationDao {
         LIMIT 1
     """)
     suspend fun getPushRegistration(instance: String): PushRegistrationEntity?
+
+    @Insert
+    suspend fun insertReceipt(receipt: PushReceiptEntity)
+
+    @Insert
+    suspend fun insertExecution(execution: PushExecutionEntity)
+
+    @Query("""
+        SELECT *
+        FROM PushExecution
+        WHERE :sessionId IS NULL OR sessionId = :sessionId
+        AND timestamp >= :since
+        ORDER BY timestamp DESC
+        LIMIT $VISUAL_QUERY_LIMIT
+    """)
+    fun followPushExecutions(sessionId: String?, since: Long): Flow<List<PushExecutionEntity>>
+
+    @Query("""
+        SELECT *
+        FROM PushReceipt
+        WHERE :sessionId IS NULL OR sessionId = :sessionId
+        AND timestamp >= :since
+        ORDER BY timestamp DESC
+        LIMIT $VISUAL_QUERY_LIMIT
+    """)
+    fun followEventPushReceived(sessionId: String?, since: Long): Flow<List<PushReceiptEntity>>
+
+    @Query("""
+        SELECT *
+        FROM PushNotificationEvent
+        WHERE (:sessionId IS NULL OR sessionId = :sessionId)
+        AND (timestamp >= :since OR resolvedTimestamp >= :since)
+        AND (resolvedTimestamp IS NOT NULL OR failureCount > 0 or lastFailure IS NOT NULL)
+        ORDER BY COALESCE(resolvedTimestamp, timestamp) DESC
+        LIMIT $VISUAL_QUERY_LIMIT
+    """)
+    fun followEventPushResults(sessionId: String?, since: Long): Flow<List<PushNotificationEventEntity>>
+
+    @Query("DELETE FROM PushReceipt WHERE timestamp < :before")
+    suspend fun deleteOldReceipts(before: Long)
+
+    @Query("DELETE FROM PushExecution WHERE timestamp < :before")
+    suspend fun deleteOldExecutions(before: Long)
+
+    @Query("DELETE FROM PushNotificationEvent WHERE timestamp < :before")
+    suspend fun deleteOldPushEvents(before: Long)
+
+    @Transaction
+    suspend fun deleteOldPushHistory() {
+        val cutoff = System.currentTimeMillis() - 7L * 24 * 60 * 60 * 1000
+        deleteOldReceipts(cutoff)
+        deleteOldExecutions(cutoff)
+        deleteOldPushEvents(cutoff)
+    }
+
+    @Query("""
+        SELECT registration.sessionId,
+            (SELECT COUNT(*) FROM PushReceipt
+             WHERE sessionId = registration.sessionId
+               AND timestamp >= :since) AS pushCount,
+            COALESCE((SELECT SUM(duration) FROM PushExecution
+                      WHERE sessionId = registration.sessionId
+                        AND timestamp >= :since), 0) AS duration
+        FROM PushRegistration AS registration
+    """)
+    fun followPushStats(since: Long): Flow<List<PushStats>>
+
+    @Query("""
+        SELECT
+            (SELECT COUNT(*) FROM PushReceipt
+             WHERE timestamp >= :since) AS pushCount,
+            COALESCE((SELECT SUM(duration) FROM PushExecution
+              WHERE  timestamp >= :since), 0) AS duration
+    """)
+    fun followTotalPushCountAndDuration(since: Long): Flow<Pair<Long, Long>>
 }

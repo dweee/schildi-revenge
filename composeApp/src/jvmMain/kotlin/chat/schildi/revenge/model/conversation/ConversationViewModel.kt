@@ -81,6 +81,8 @@ import chat.schildi.revenge.model.canSendEmpty
 import chat.schildi.revenge.model.getCurrentCompletionEntity
 import chat.schildi.revenge.model.platformOnMessageSent
 import chat.schildi.revenge.model.shouldSendTypingIndicator
+import chat.schildi.revenge.notification.platformAutoDismissNotification
+import chat.schildi.revenge.notification.platformDismissNotification
 import chat.schildi.revenge.toDestination
 import chat.schildi.revenge.toPrettyJson
 import chat.schildi.revenge.util.tryOrNull
@@ -340,6 +342,11 @@ class ConversationViewModel(
 
     private val clientFlow = UiState.selectClient(sessionId, viewModelScope, loadStateHolder)
 
+    private val _targetEvent = MutableStateFlow<EventJumpTarget?>(
+        initialTargetEvent?.let(EventJumpTarget::Event) ?: EventJumpTarget.Index(0)
+    )
+    val targetEvent = _targetEvent.asStateFlow()
+
     private val effectiveInitialEventId = viewModelScope.async {
         if (timelineParams == null && scPreferencesStore.getSetting(ScPrefs.OPEN_AT_UNREAD)) {
             loadStateHolder.addExpectedBefore(LoadCheckPoint.Timeline, LoadCheckPoint.ReadMarker)
@@ -364,12 +371,6 @@ class ConversationViewModel(
             initialTargetEvent
         }
     }
-
-
-    private val _targetEvent = MutableStateFlow<EventJumpTarget?>(
-        initialTargetEvent?.let(EventJumpTarget::Event) ?: EventJumpTarget.Index(0)
-    )
-    val targetEvent = _targetEvent.asStateFlow()
 
     private val timelineFilterSettings = scPreferencesStore.combinedSettingFlow { lookup ->
         buildScTimelineFilterSettings(lookup)
@@ -503,7 +504,9 @@ class ConversationViewModel(
         },
         roomInfo,
     ) { client, (enable, enableInE2ee), info ->
-        client?.takeIf { enable && (enableInE2ee || (info?.isEncrypted == false)) }?.let {
+        client?.takeIf { enable && (enableInE2ee || (info?.isEncrypted == false)) }
+    }.distinctUntilChanged().map { client ->
+        client?.let {
             UrlPreviewStateProvider(
                 urlPreviewProvider = UrlPreviewProvider(client),
                 scope = viewModelScope.childScope(Dispatchers.IO, "urlPreviews"),
@@ -942,6 +945,8 @@ class ConversationViewModel(
         else -> null
     }
 
+    val modeSupportsComposer = draftKey != null
+
     private val preferredComposerFormat = scPreferencesStore.settingFlow(ScPrefs.PREFERRED_MESSAGE_FORMAT).map {
         tryOrNull { ComposerFormat.valueOf(it) }
             ?: ComposerFormat.valueOf(ScPrefs.PREFERRED_MESSAGE_FORMAT.defaultValue)
@@ -1104,8 +1109,8 @@ class ConversationViewModel(
                 // Shouldn't really matter if it's a private or public RR since we're about to send a message anyway,
                 // but since this should only do anything at all if we didn't send a RR before, defaulting to private
                 // should be more meaningful in case later actions fail.
-                // TODO this can take a while, can we check if this is really necessary?
                 GlobalActionsScope.launch {
+                    platformDismissNotification(sessionId, roomId)
                     // currentTimeline may not be live, but we want to mark the live one as read.
                     val timeline = joinedRoom.value?.liveTimeline ?: return@launch
                     timeline.markAsRead(ReceiptType.READ_PRIVATE)
@@ -1491,6 +1496,7 @@ class ConversationViewModel(
                 activeTimeline.value?.let { timeline ->
                     val receiptType = getAutoReadReceiptType(receiptTypeSetting, info) ?: return@combine
                     viewModelScope.launch {
+                        platformAutoDismissNotification(sessionId, roomId, listOf(latest))
                         timeline.sendReadReceipt(latest, receiptType)
                             .onFailure { log.e("Failed to send the live RR", it) }
                             .onSuccess { latestSentReadReceipt.value = latest }
@@ -1837,6 +1843,7 @@ class ConversationViewModel(
                         GlobalActionsScope,
                         Dispatchers.IO
                     ) {
+                        platformDismissNotification(sessionId, roomId)
                         timeline.markAsRead(ReceiptType.READ).toActionResult()
                     }
                 }
@@ -1848,6 +1855,7 @@ class ConversationViewModel(
                         GlobalActionsScope,
                         Dispatchers.IO
                     ) {
+                        platformDismissNotification(sessionId, roomId)
                         timeline.markAsRead(ReceiptType.READ_PRIVATE).toActionResult()
                     }
                 }
@@ -1859,6 +1867,7 @@ class ConversationViewModel(
                         GlobalActionsScope,
                         Dispatchers.IO
                     ) {
+                        platformDismissNotification(sessionId, roomId)
                         timeline.markAsRead(ReceiptType.FULLY_READ).toActionResult().also {
                             if (it is ActionResult.Success) {
                                 _cachedFullyRead.value = null
@@ -2246,6 +2255,7 @@ class ConversationViewModel(
         return launchActionAsync("MarkEventAsRead", viewModelScope, Dispatchers.IO) {
             var result: ActionResult? = null
             timeline.invokeOnCurrentTimeline {
+                platformAutoDismissNotification(sessionId, roomId, listOf(eventId))
                 result = forceSendReadReceipt(eventId, receiptType)
                     .onFailure {
                         log.e("Failed to send read receipt $receiptType", it)
@@ -2497,6 +2507,27 @@ class ConversationViewModel(
                                 copyToClipboard(eventSource, Res.string.command_copy_name_event_source.toStringHolder())
                             } else {
                                 viewInExternalApp(eventSource, ".json")
+                            }
+                        } ?: ActionResult.Inapplicable
+                    }
+
+                    Action.Event.CopyRawEventSource,
+                    Action.Event.ViewRawEventSource,
+                    Action.Event.CopyRedactedEventSource,
+                    Action.Event.ViewRedactedEventSource -> {
+                        eventId?.let {
+                            val room = baseRoom.value ?: return@let ActionResult.Failure("Room not ready")
+                            val includeUnredactedContent = action == Action.Event.CopyRedactedEventSource ||
+                                action == Action.Event.ViewRedactedEventSource
+                            launchActionAsync("fetchRawEventSource", viewModelScope) {
+                                room.fetchRawEvent(eventId, includeUnredactedContent).mapActionResult { source ->
+                                    val eventSource = source.toPrettyJson()
+                                    if (action == Action.Event.CopyRawEventSource || action == Action.Event.CopyRedactedEventSource) {
+                                        copyToClipboard(eventSource, Res.string.command_copy_name_event_source.toStringHolder())
+                                    } else {
+                                        viewInExternalApp(eventSource, ".json")
+                                    }
+                                }
                             }
                         } ?: ActionResult.Inapplicable
                     }
@@ -2904,7 +2935,12 @@ class ConversationViewModel(
         event: EventTimelineItem,
     ) = context.downloadFile(event) { file ->
         try {
-            platformPersistDownload(file, event.mediaFilename(), event.mediaMimetype())
+            platformPersistDownload(
+                context.platformContext,
+                file,
+                event.mediaFilename(),
+                event.mediaMimetype()
+            )
         } catch (t: Throwable) {
             log.e("Failed to persist downloaded file", t)
             ActionResult.Failure(t.message ?: "Failed to persist downloaded file")
@@ -2916,7 +2952,7 @@ class ConversationViewModel(
         event: EventTimelineItem,
     ) = context.downloadFile(event) { file ->
         try {
-            platformOpenFile(file, event.mediaMimetype())
+            platformOpenFile(context.platformContext, file, event.mediaMimetype())
         } catch (t: Throwable) {
             log.e("Failed to open file", t)
             ActionResult.Failure(t.message ?: "Failed to open file")
