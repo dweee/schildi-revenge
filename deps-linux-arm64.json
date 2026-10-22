@@ -5321,6 +5321,10 @@
    "jar": "sha256-LeLlmmKP9FnEL7UeY29tELz/FHTs4aP5e93Sgw9FqJM=",
    "pom": "sha256-iYYrepIIsR8JZms77ATJZVoO0MIJDldr7n3n6Wl20HI="
   },
+  "org/jetbrains/skiko#skiko-awt-runtime-linux-arm64/0.150.2": {
+   "jar": "sha256-qhJAV8blC96p4N606FZJ8MPXjs1m47G1dRvL4lHfulk=",
+   "pom": "sha256-jYO3KbLUf15PeP1Oj9TxgmE68dkuB2Y63bH7KVhzmLs="
+  },
   "org/jetbrains/skiko#skiko-awt-runtime-linux-x64/0.150.1": {
    "jar": "sha256-kgwcsDOr+3kgL59FX7hkkb7F5FwVbxhsASWxD86X4JM=",
    "pom": "sha256-2t5MaGRtWefa0ITlIK/ISAW4VnYUaFHETqyi/JzEj6g="
