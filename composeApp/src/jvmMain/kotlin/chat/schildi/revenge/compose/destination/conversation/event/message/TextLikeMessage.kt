@@ -30,7 +30,9 @@ import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.IntSize
+import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.isSpecified
 import androidx.compose.ui.unit.min
 import chat.schildi.matrixsdk.urlpreview.UrlPreviewInfo
 import chat.schildi.revenge.Dimens
@@ -151,13 +153,20 @@ fun TextLikeMessage(
 }
 
 @Composable
+private fun defaultTextContentMaxLines() = when (LocalMessageRenderContext.current) {
+    MessageRenderContext.NORMAL -> Int.MAX_VALUE
+    MessageRenderContext.IN_REPLY_TO -> 20
+    MessageRenderContext.COMPOSER_IN_REPLY_TO -> 3
+}
+
+@Composable
 fun TextLikeMessageContent(
     text: MatrixBodyParseResult,
     modifier: Modifier = Modifier,
     allowBigEmojiOnly: Boolean = false,
     textColor: Color = MaterialTheme.colorScheme.primary,
     interactionState: MatrixFormatInteractionState = rememberMatrixFormatInteractionState(text),
-    maxLines: Int = if (LocalMessageRenderContext.current == MessageRenderContext.IN_REPLY_TO) 20 else Int.MAX_VALUE,
+    maxLines: Int = defaultTextContentMaxLines(),
     onTextLayout: (TextLayoutResult) -> Unit = {},
 ) {
     val isEmojiOnly = allowBigEmojiOnly && LocalMessageRenderContext.current == MessageRenderContext.NORMAL &&
@@ -166,6 +175,9 @@ fun TextLikeMessageContent(
             }
     val textStyle = if (isEmojiOnly) {
         Dimens.Conversation.emojiOnlyMessageStyle
+    } else if (text.inlineImages.isNotEmpty() || text.inlineTables.isNotEmpty()) {
+        // [Android] Important for inline content to not fix a line height, so it can measure freely.
+        LocalMessageStyle.current.textStyle.copy(lineHeight = TextUnit.Unspecified)
     } else {
         LocalMessageStyle.current.textStyle
     }
@@ -188,7 +200,7 @@ fun TextLikeMessageContent(
     textColor: Color = MaterialTheme.colorScheme.primary,
     textAlign: TextAlign? = null,
     interactionState: MatrixFormatInteractionState = rememberMatrixFormatInteractionState(text),
-    maxLines: Int = if (LocalMessageRenderContext.current == MessageRenderContext.IN_REPLY_TO) 20 else Int.MAX_VALUE,
+    maxLines: Int = defaultTextContentMaxLines(),
     overflow: TextOverflow = TextOverflow.Ellipsis,
     onTextLayout: (TextLayoutResult) -> Unit = {},
 ) {
@@ -288,7 +300,7 @@ private fun Map<String, InlineImageInfo>.toInlineContent(
     val inlineImageSizes = remember { mutableStateMapOf<String, IntSize>() }
     return toInlineContent(
         density = LocalDensity.current,
-        defaultHeight = textStyle.lineHeight,
+        defaultHeight = textStyle.lineHeight.takeIf { it.isSpecified } ?: textStyle.fontSize,
         actualImageSizes = inlineImageSizes,
         minWidth = INLINE_IMG_MIN_WIDTH_DP.dp,
         maxWidth = INLINE_IMG_MAX_WIDTH_DP.dp,
