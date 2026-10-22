@@ -22,7 +22,7 @@ jobs:
     permissions:
       contents: write
       actions: write
-    uses: dweee/dave-fork-ci/.github/workflows/archive-packages.yml@f506348a154600abbbc53025c39b14020b014e7d
+    uses: dweee/dave-fork-ci/.github/workflows/archive-packages.yml@8210b95c20dd8ba201a293ff9653a6becc5aaf63
     with:
       run-id: ${{ format('{0}', github.event.workflow_run.id || inputs.run-id) }}
-      tool-revision: f506348a154600abbbc53025c39b14020b014e7d
+      tool-revision: 8210b95c20dd8ba201a293ff9653a6becc5aaf63
