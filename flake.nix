@@ -17,6 +17,11 @@
               inherit (finalAttrs) src cargoRoot;
               hash = "sha256-/nSM4ff10gOJuTpNNeb42DtaolPu3Z9Zy9CiBZ0v+Oc=";
             };
+            # Keep the standalone fork cache current with upstream dependency bumps.
+            mitmCache = pkgs.gradle_9.fetchDeps {
+              pkg = finalAttrs.finalPackage;
+              data = ./deps-linux.json;
+            };
             # Workflow and sync-state changes do not alter the application.
             src = nixpkgs.lib.cleanSourceWith {
               src = self;
