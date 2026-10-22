@@ -15,7 +15,11 @@
             # The fork SDK lock can advance independently of the nixpkgs release.
             cargoDeps = pkgs.rustPlatform.fetchCargoVendor {
               inherit (finalAttrs) src cargoRoot;
-              hash = "sha256-/nSM4ff10gOJuTpNNeb42DtaolPu3Z9Zy9CiBZ0v+Oc=";
+              # Keep both the current branch and reviewed incoming SDK buildable.
+              hash = let
+                hashes = builtins.fromJSON (builtins.readFile ./nix/cargo-hashes.json);
+                lockHash = builtins.hashFile "sha256" (self + "/matrix-rust-sdk/Cargo.lock");
+              in hashes.${lockHash} or nixpkgs.lib.fakeHash;
             };
             # Keep the standalone fork cache current with upstream dependency bumps.
             mitmCache = pkgs.gradle_9.fetchDeps {
