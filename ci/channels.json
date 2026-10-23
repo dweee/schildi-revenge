@@ -1,0 +1,30 @@
+{
+  "targets": {
+    "aarch64-darwin": [
+      {
+        "attribute": "packages.aarch64-darwin.schildi-revenge",
+        "visibility": "public"
+      }
+    ],
+    "x86_64-linux": [
+      {
+        "attribute": "packages.x86_64-linux.schildi-revenge",
+        "visibility": "public"
+      }
+    ],
+    "aarch64-linux": [
+      {
+        "attribute": "packages.aarch64-linux.schildi-revenge",
+        "visibility": "public"
+      }
+    ]
+  },
+  "excludedSystems": [],
+  "submodules": true,
+  "integrationInventory": false,
+  "version": 1,
+  "forge": "github",
+  "repository": "dweee/schildi-revenge",
+  "branch": "flakey",
+  "remote": "https://github.com/dweee/schildi-revenge.git"
+}
