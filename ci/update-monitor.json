@@ -1,0 +1,10 @@
+{
+  "version": 1,
+  "checks": [],
+  "upstreams": [
+    {
+      "name": "SchildiChat/schildi-revenge",
+      "api": "https://api.github.com/repos/SchildiChat/schildi-revenge/releases/latest"
+    }
+  ]
+}
