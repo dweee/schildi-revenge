@@ -1,9 +1,9 @@
 {
-  "branch": "f97b4e0bd3e847aef17f5ba2cbedbd4e6c1c1c77",
+  "branch": "a3694bd5d4b05ea82e8ced75d67dc04a1fb46c64",
   "release": {
-    "id": 416313895,
-    "sha": "9ece7004af5cd5f8830681bf6c0868d87acf9534",
-    "tag": "v26.10.18"
+    "id": 424532416,
+    "sha": "03f50659b58c0b5b558adebbe464a1cf766317fb",
+    "tag": "v26.10.26"
   },
   "track": "both",
   "upstream": "SchildiChat/schildi-revenge",
