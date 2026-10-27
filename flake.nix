@@ -13,13 +13,12 @@
         in let
           sourcePackage = pkgs.schildi-revenge.overrideAttrs (finalAttrs: _old: {
             # The fork SDK lock can advance independently of the nixpkgs release.
-            cargoDeps = pkgs.rustPlatform.fetchCargoVendor {
-              inherit (finalAttrs) src cargoRoot;
-              # Keep both the current branch and reviewed incoming SDK buildable.
-              hash = let
-                hashes = builtins.fromJSON (builtins.readFile ./nix/cargo-hashes.json);
-                lockHash = builtins.hashFile "sha256" (self + "/matrix-rust-sdk/Cargo.lock");
-              in hashes.${lockHash} or nixpkgs.lib.fakeHash;
+            cargoDeps = pkgs.rustPlatform.importCargoLock {
+              # Crate checksums come from the lock itself, so an SDK lock bump
+              # needs no hand-maintained vendor hash. Git sources are pinned
+              # by the revision recorded in the lock.
+              lockFile = self + "/matrix-rust-sdk/Cargo.lock";
+              allowBuiltinFetchGit = true;
             };
             # Keep the standalone fork cache current with upstream dependency bumps.
             mitmCache = pkgs.gradle_9.fetchDeps {
