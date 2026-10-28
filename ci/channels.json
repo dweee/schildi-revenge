@@ -26,5 +26,10 @@
   "forge": "github",
   "repository": "dweee/schildi-revenge",
   "branch": "flakey",
-  "remote": "https://github.com/dweee/schildi-revenge.git"
+  "remote": "https://github.com/dweee/schildi-revenge.git",
+  "inputCheckWorkflows": [
+    "release-channels.yml",
+    "darwin-actions.yml",
+    "others-actions.yml"
+  ]
 }
