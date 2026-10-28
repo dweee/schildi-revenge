@@ -28,6 +28,7 @@
   "branch": "flakey",
   "remote": "https://github.com/dweee/schildi-revenge.git",
   "inputCheckWorkflows": [
+    "release-channels.yml",
     "darwin-actions.yml",
     "others-actions.yml"
   ]
