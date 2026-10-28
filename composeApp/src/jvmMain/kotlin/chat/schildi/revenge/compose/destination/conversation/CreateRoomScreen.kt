@@ -29,6 +29,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.key.Key
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import chat.schildi.lib.preferences.ScPrefs
 import chat.schildi.resources.toStringHolder
@@ -45,6 +46,7 @@ import chat.schildi.revenge.actions.actionProvider
 import chat.schildi.revenge.actions.currentActionContext
 import chat.schildi.revenge.actions.rememberListActions
 import chat.schildi.revenge.compose.components.EditTextValue
+import chat.schildi.revenge.compose.components.EditableAvatar
 import chat.schildi.revenge.compose.components.EditableDropdown
 import chat.schildi.revenge.compose.components.EditableDropdownEntry
 import chat.schildi.revenge.compose.components.EditableText
@@ -56,6 +58,8 @@ import chat.schildi.revenge.compose.components.TopNavigationTitle
 import chat.schildi.revenge.compose.components.keyboardShortcutFromIndexZero
 import chat.schildi.revenge.compose.focus.FocusContainer
 import chat.schildi.revenge.compose.focus.keyFocusable
+import chat.schildi.revenge.compose.focus.rememberFocusId
+import chat.schildi.revenge.config.keybindings.Action
 import chat.schildi.revenge.matrixBodyDrawStyle
 import chat.schildi.revenge.matrixBodyFormatter
 import chat.schildi.revenge.model.conversation.COMMON_ROOM_PRESETS
@@ -155,6 +159,25 @@ fun CreateRoomScreen(
                             sessionIds,
                             persist = { viewModel.setSessionId(it) },
                             enabled = canEditSettings && sessionIds.any { it.value != settings.sessionId },
+                        )
+                    }
+
+                    // Room avatar
+                    item {
+                        val focusId = rememberFocusId()
+                        EditableAvatar(
+                            "$viewModelKey/roomAvatar",
+                            currentValue = null,
+                            size = 128.dp,
+                            displayName = params.name ?: "R",
+                            role = FocusRole.LIST_ITEM_EDITABLE_SINGLE_LINE,
+                            modifier = Modifier.fillMaxWidth(),
+                            persist = null,
+                            allowAnimated = true,
+                            sessionId = settings.sessionId,
+                            editState = viewModel.avatarState,
+                            clickAction = InteractionAction.HandleAction(focusId, Action.ImageEditAble.OpenPicker),
+                            focusId = focusId,
                         )
                     }
 
