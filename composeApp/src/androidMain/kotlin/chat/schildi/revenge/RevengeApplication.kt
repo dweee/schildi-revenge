@@ -1,6 +1,7 @@
 package chat.schildi.revenge
 
 import android.app.Application
+import androidx.emoji2.text.EmojiCompat
 import ca.gosyer.appdirs.impl.attachAppDirs
 import chat.schildi.revenge.glue.AndroidSyncOrchestrationAppStateProvider
 import chat.schildi.revenge.notification.AndroidNotifier
@@ -10,6 +11,7 @@ import chat.schildi.revenge.util.ExternalViewCache
 import chat.schildi.revenge.util.filepicker.ComposerAttachmentCache
 import co.touchlab.kermit.Logger
 import co.touchlab.kermit.platformLogWriter
+import io.element.android.libraries.core.extensions.runCatchingExceptions
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import org.matrix.rustcomponents.sdk.LogLevel
@@ -31,6 +33,14 @@ class RevengeApplication : Application() {
             platformLogWriter(),
             createAppFileLogWriter(),
         )
+
+        // Init the SDK with the Android Context, so it can be used with rustls and other Android specific features
+        runCatchingExceptions {
+            org.matrix.rustsdk.Android.init(this)
+        }.onFailure {
+            Logger.withTag("PlatformInitializer").e("Failed to init the SDK with an Android Context. The app probably won't work properly.", it)
+        }
+
         val systemExceptionHandler = Thread.getDefaultUncaughtExceptionHandler()
         Thread.setDefaultUncaughtExceptionHandler { thread, error ->
             try {
@@ -40,6 +50,9 @@ class RevengeApplication : Application() {
             }
         }
         logProcessStarted()
+
+        EmojiCompat.init(this)
+
         val initScope = ScCoroutines.scope(Dispatchers.IO, "AppInit")
         ComposerAttachmentCache.clearAsync(initScope)
         ExternalViewCache.clearAsync(initScope)
