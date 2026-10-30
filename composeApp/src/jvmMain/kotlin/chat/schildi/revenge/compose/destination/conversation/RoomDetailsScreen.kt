@@ -57,10 +57,8 @@ import chat.schildi.revenge.actions.LocalRoomContextSuggestionsProvider
 import chat.schildi.revenge.actions.actionProvider
 import chat.schildi.revenge.actions.hierarchicalKeyboardActionProvider
 import chat.schildi.revenge.actions.plainTextCopyAction
-import chat.schildi.revenge.actions.plainTextCopyActionWithMxcUrl
 import chat.schildi.revenge.actions.toCopyAction
 import chat.schildi.revenge.actions.rememberListActions
-import chat.schildi.revenge.compose.components.AvatarImage
 import chat.schildi.revenge.compose.components.EditTextValue
 import chat.schildi.revenge.compose.components.EditableDropdown
 import chat.schildi.revenge.compose.components.EditableDropdownEntry
@@ -71,6 +69,7 @@ import chat.schildi.revenge.compose.focus.FocusContainer
 import chat.schildi.revenge.compose.focus.keyFocusable
 import chat.schildi.resources.toStringHolder
 import chat.schildi.revenge.LocalDestinationState
+import chat.schildi.revenge.compose.components.EditableAvatar
 import chat.schildi.revenge.compose.components.TopNavigationIcon
 import chat.schildi.revenge.matrixBodyDrawStyle
 import chat.schildi.revenge.matrixBodyFormatter
@@ -174,25 +173,22 @@ fun RoomDetailsScreen(
                             .asPaddingValues(),
                     ) {
                         item {
-                            Box(
-                                Modifier.fillMaxWidth().keyFocusable(
-                                    FocusRole.LIST_ITEM,
-                                    actionProvider = actionProvider(
-                                        copyActions = plainTextCopyActionWithMxcUrl(info.avatarUrl),
-                                    ),
-                                ),
-                                contentAlignment = Alignment.Center,
-                            ) {
-                                AvatarImage(
-                                    source = info.avatarUrl?.let { MediaSource(it) },
-                                    size = 128.dp,
-                                    displayName = info.name ?: viewModel.roomId.value,
-                                    allowAnimated = true,
-                                )
-                            }
+                            EditableAvatar(
+                                "$viewModelKey/roomAvatar",
+                                currentValue = info.avatarUrl?.let { MediaSource(it) },
+                                size = 128.dp,
+                                displayName = info.name ?: viewModel.roomId.value,
+                                role = FocusRole.LIST_ITEM_EDITABLE_SINGLE_LINE,
+                                modifier = Modifier.fillMaxWidth(),
+                                persist = viewModel::setRoomAvatar,
+                                canEdit = permissions.canEditAvatar,
+                                allowAnimated = true,
+                            )
                         }
                         if (info.rawName != null || !info.isDirect) {
-                            // Generated name, if differs from raw name
+                            // Generated name, if differs from raw name.
+                            // Usually "Empty Room" or part of the alias if exists
+                            /*
                             if (info.rawName != info.name) {
                                 info.name?.let { displayName ->
                                     item {
@@ -204,6 +200,7 @@ fun RoomDetailsScreen(
                                     }
                                 }
                             }
+                             */
                             // Editable room name
                             item {
                                 EditableText(
