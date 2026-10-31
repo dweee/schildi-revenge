@@ -3,7 +3,7 @@ androidGradlePlugin = "9.4.1"
 versionsPlugin = "0.66.0"
 dependencyLicenseReport = "3.1.4"
 androidx-lifecycle = "2.11.0"
-androidx-datastore = "1.2.1"
+androidx-datastore = "1.3.0"
 composeHotReload = "1.2.0"
 composeMultiplatform = "1.12.2"
 composeMaterial3 = "1.9.0"
@@ -15,8 +15,9 @@ kotlinx-coroutines = "1.11.0"
 kotlinx-datetime = "0.8.0"
 jetbrainsKotlinJvm = "2.4.21"
 jna = "5.19.1"
-kotlinxSerialization = "1.11.0"
-metro = "1.4.5"
+rustlsPlatformVerifier = "0.2.0"
+kotlinxSerialization = "1.12.0"
+metro = "1.5.0"
 coil = "3.6.3"
 kdroidfilterPlatformtools = "0.7.5"
 kdroidfilterComposeNativeTray = "2.1.7"
@@ -24,13 +25,15 @@ kdroidfilterKnotify = "0.4.3"
 ktoml = "0.7.1"
 ktor = "3.6.0"
 jsoup = "1.23.2"
-beeperMessageFormat = "cdcb822431691abccad09c58ef8c253b1208375b"
+beeperMessageFormat = "e38f150eff24644f2ffc451a7b0ec506f819c08d"
 dbusJava = "5.2.2"
 clikt = "5.1.0"
 blurhash = "0.3.0"
 androidx-core = "1.19.1"
 androidx-activity = "1.13.0"
 androidx-core-splashscreen = "1.2.0"
+androidx-emoji2 = "1.7.0"
+androidx-exifinterface = "1.4.2"
 androidx-work = "2.12.0"
 unifiedpush = "3.3.5"
 unifiedpush-embedded-fcm = "3.1.0"
@@ -59,6 +62,7 @@ kotlinx-coroutines-core = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-c
 kotlinx-coroutines-test = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-test", version.ref = "kotlinx-coroutines" }
 kotlinx-datetime = { module = "org.jetbrains.kotlinx:kotlinx-datetime", version.ref = "kotlinx-datetime" }
 jna = { module = "net.java.dev.jna:jna", version.ref = "jna" }
+rustls_platform_verifier = { module = "org.rustls:rustls-platform-verifier", version.ref = "rustlsPlatformVerifier" }
 kermit = "co.touchlab:kermit:2.2.0"
 appdirs = "ca.gosyer:kotlin-multiplatform-appdirs:2.0.0"
 kotlinx-serialization-json = { group = "org.jetbrains.kotlinx", name = "kotlinx-serialization-json", version.ref = "kotlinxSerialization" }
@@ -84,7 +88,9 @@ dbus-java-transport-native-unixsocket = { module = "com.github.hypfvieh:dbus-jav
 clikt = { module = "com.github.ajalt.clikt:clikt", version.ref = "clikt" }
 vanniktech-blurhash = { module = "com.vanniktech:blurhash", version.ref = "blurhash" }
 androidx-core-ktx = { module = "androidx.core:core-ktx", version.ref = "androidx-core" }
+androidx-emoji2 = { module = "androidx.emoji2:emoji2", version.ref = "androidx-emoji2" }
 androidx-core-splashscreen = { module = "androidx.core:core-splashscreen", version.ref = "androidx-core-splashscreen" }
+androidx-exifinterface = { module = "androidx.exifinterface:exifinterface", version.ref = "androidx-exifinterface" }
 androidx-activity-compose = { module = "androidx.activity:activity-compose", version.ref = "androidx-activity" }
 desugar-jdk-libs = { module = "com.android.tools:desugar_jdk_libs", version.ref = "desugarJdkLibs" }
 coil3-gif = { group = "io.coil-kt.coil3", name = "coil-gif", version.ref = "coil" }
