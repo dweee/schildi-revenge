@@ -1,0 +1,64 @@
+# Regenerates one platform's pinned offline Gradle cache with the package's
+# own mitmCache.updateScript. Manual only: this is a maintenance tool for the
+# dependency locks that upstream bumps invalidate, not a check.
+name: Relock Gradle dependency cache
+
+on:
+  workflow_dispatch:
+    inputs:
+      system:
+        description: Nix system whose deps-*.json should be regenerated
+        required: true
+        default: aarch64-darwin
+        type: choice
+        options:
+          - aarch64-darwin
+          - x86_64-linux
+          - aarch64-linux
+
+permissions:
+  contents: read
+
+jobs:
+  relock:
+    runs-on: ${{ inputs.system == 'aarch64-darwin' && 'macos-15' || (inputs.system == 'aarch64-linux' && 'ubuntu-24.04-arm' || 'ubuntu-24.04') }}
+    timeout-minutes: 240
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+        with:
+          ref: ${{ github.event.repository.default_branch }}
+          submodules: recursive
+          persist-credentials: false
+
+      - uses: DeterminateSystems/determinate-nix-action@92957199488000b908fdad19f63711000965d8f3
+        if: ${{ !(runner.os == 'macOS' && runner.arch == 'X64') }}
+        with:
+          source-tag: v3.24.1
+          summarize: false
+          kvm: false
+
+      - name: Select the dependency file
+        run: |
+          set -eu
+          case "${{ inputs.system }}" in
+            aarch64-darwin) echo 'DATA=deps-darwin.json' >> "$GITHUB_ENV" ;;
+            x86_64-linux) echo 'DATA=deps-linux.json' >> "$GITHUB_ENV" ;;
+            aarch64-linux) echo 'DATA=deps-linux-arm64.json' >> "$GITHUB_ENV" ;;
+            *) echo 'Unsupported system' >&2; exit 1 ;;
+          esac
+
+      - name: Regenerate the pinned cache
+        run: |
+          set -eu
+          rm -f result
+          nix build --option accept-flake-config false --no-write-lock-file \
+            --print-out-paths -o result ".#packages.${{ inputs.system }}.default.mitmCache.updateScript"
+          ./result
+          test -s "$DATA"
+
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: deps-${{ inputs.system }}
+          path: ${{ env.DATA }}
+          if-no-files-found: error
+          retention-days: 7
