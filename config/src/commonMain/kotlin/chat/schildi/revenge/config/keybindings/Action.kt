@@ -387,6 +387,9 @@ sealed interface Action {
         CopyFullRoomState,
         ViewFullRoomState,
         CloseConversationBypassingReadTracking(aliases = listOf("closeUnread")),
+        RevealAllMedia(aliases = listOf("revealAllMedia", "showAllMedia")),
+        HideAllMedia(aliases = listOf("hideAllMedia")),
+        ToggleRevealAllMedia(aliases = listOf("toggleRevealAllMedia", "toggleShowAllMedia")),
     }
     enum class Room(
         override val aliases: kotlin.collections.List<String> = emptyList(),
@@ -469,6 +472,9 @@ sealed interface Action {
         ExpandDetails(aliases = listOf("revealDetails", "expand", "revealSpoiler", "showSpoiler")),
         CollapseDetails(aliases = listOf("collapseDetails", "collapse", "hideSpoiler")),
         ToggleDetails(aliases = listOf("toggleDetails", "toggleSpoiler")),
+        RevealMedia(aliases = listOf("revealMedia", "showMedia")),
+        HideMedia(aliases = listOf("hideMedia")),
+        ToggleMedia(aliases = listOf("toggleMedia")),
         Pin,
         Unpin,
         TogglePollVote(args = listOf(ActionArgumentPrimitive.PollAnswerId)),

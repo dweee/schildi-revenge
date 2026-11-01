@@ -74,12 +74,14 @@ import chat.schildi.revenge.model.PendingAction
 import chat.schildi.revenge.model.PendingActionState
 import chat.schildi.revenge.model.PendingGlobalActions
 import chat.schildi.revenge.model.RoomActionProvider
+import chat.schildi.revenge.model.ShowMediaPolicy
 import chat.schildi.revenge.model.UserActionProvider
 import chat.schildi.revenge.model.asCheckpointLoadedOrPending
 import chat.schildi.revenge.model.buildAttachmentForFile
 import chat.schildi.revenge.model.canSendEmpty
 import chat.schildi.revenge.model.getCurrentCompletionEntity
 import chat.schildi.revenge.model.platformOnMessageSent
+import chat.schildi.revenge.model.shouldApplyMediaPolicy
 import chat.schildi.revenge.model.shouldSendTypingIndicator
 import chat.schildi.revenge.notification.platformAutoDismissNotification
 import chat.schildi.revenge.notification.platformDismissNotification
@@ -521,6 +523,9 @@ class ConversationViewModel(
             currentUrlPreviewStateProvider.getAndSet(it)?.clear()
         }
     }.stateIn(viewModelScope, SharingStarted.Lazily, null)
+
+    private val _mediaPolicy = MutableStateFlow<ShowMediaPolicy>(ShowMediaPolicy.OptIn())
+    val mediaPolicy = _mediaPolicy.asStateFlow()
 
     override val roomContextSuggestionsProvider = RoomContextSuggestionsProvider(
         sessionId = sessionId,
@@ -1372,6 +1377,13 @@ class ConversationViewModel(
         }
     }
 
+    private fun findEventById(
+        eventId: EventId,
+        timelineState: TimelineItemsState? = activeTimelineState.value,
+    ): MatrixTimelineItem.Event? = timelineState?.items?.firstNotNullOfOrNull {
+        (it as? MatrixTimelineItem.Event)?.takeIf { it.eventId == eventId }
+    }
+
     override fun clearAttachment() {
         draftKey ?: return
         var removedAttachment: Attachment? = null
@@ -1510,6 +1522,26 @@ class ConversationViewModel(
 
         timelineController.flatMapLatest { it?.isLive() ?: flowOf(null) }.onEach { isLive ->
             log.d { "Timeline is live: $isLive" }
+        }.launchIn(viewModelScope)
+
+        // Base media policy
+        combine(
+            roomInfo.map { it?.isPublic == true },
+            scPreferencesStore.settingFlow(ScPrefs.HIDE_MEDIA),
+        ) { nonPublic, hideMediaRawValue ->
+            val shouldOptIn = when (tryOrNull { ScPrefs.HideMediaMode.valueOf(hideMediaRawValue) }) {
+                null,
+                ScPrefs.HideMediaMode.NEVER -> false
+                ScPrefs.HideMediaMode.PUBLIC -> nonPublic
+                ScPrefs.HideMediaMode.ALWAYS -> true
+            }
+            if (shouldOptIn) {
+                ShowMediaPolicy.OptIn()
+            } else {
+                ShowMediaPolicy.OptOut()
+            }
+        }.distinctUntilChanged().onEach {
+            _mediaPolicy.value = it
         }.launchIn(viewModelScope)
 
         // Live read tracking
@@ -2094,6 +2126,41 @@ class ConversationViewModel(
                     bypassMarkReadOnRoomClose.store(true)
                     context.closeDestination().orActionInapplicable()
                 }
+                Action.Conversation.RevealAllMedia -> {
+                    var changed = false
+                    _mediaPolicy.update { previous ->
+                        ShowMediaPolicy.OptOut().also {
+                            changed = it != previous
+                        }
+                    }
+                    if (changed) {
+                        ActionResult.Success()
+                    } else {
+                        ActionResult.Inapplicable
+                    }
+                }
+                Action.Conversation.HideAllMedia -> {
+                    var changed = false
+                    _mediaPolicy.update { previous ->
+                        ShowMediaPolicy.OptIn().also {
+                            changed = it != previous
+                        }
+                    }
+                    if (changed) {
+                        ActionResult.Success()
+                    } else {
+                        ActionResult.Inapplicable
+                    }
+                }
+                Action.Conversation.ToggleRevealAllMedia -> {
+                    _mediaPolicy.update {
+                        when (it) {
+                            is ShowMediaPolicy.OptIn -> ShowMediaPolicy.OptOut()
+                            is ShowMediaPolicy.OptOut -> ShowMediaPolicy.OptIn()
+                        }
+                    }
+                    ActionResult.Success()
+                }
             }
         }
     }
@@ -2390,6 +2457,16 @@ class ConversationViewModel(
                         formatInteractionState.expandableItems.size -> it - setOf(Action.Event.ExpandDetails)
                         else -> it
                     }
+                }
+            }.let {
+                if (eventId == null || (event.content as? MessageContent)?.type?.shouldApplyMediaPolicy() != true) {
+                    it - setOf(
+                        Action.Event.RevealMedia,
+                        Action.Event.HideMedia,
+                        Action.Event.ToggleMedia,
+                    )
+                } else {
+                    it
                 }
             }.let {
                 if (eventId == null) {
@@ -2864,6 +2941,50 @@ class ConversationViewModel(
                     Action.Event.Unpin -> {
                         eventId ?: return@run ActionResult.Inapplicable
                         markEventAsPinned(eventId, false)
+                    }
+                    Action.Event.RevealMedia -> {
+                        eventId ?: return@run ActionResult.Inapplicable
+                        if ((findEventById(eventId)?.event?.content as? MessageContent)?.type?.shouldApplyMediaPolicy() == false) {
+                            return@run ActionResult.Inapplicable
+                        }
+                        var changed = false
+                        _mediaPolicy.update { policy ->
+                            policy.reveal(eventId).also {
+                                changed = it != policy
+                            }
+                        }
+                        if (changed) {
+                            ActionResult.Success()
+                        } else {
+                            ActionResult.Inapplicable
+                        }
+                    }
+                    Action.Event.HideMedia -> {
+                        eventId ?: return@run ActionResult.Inapplicable
+                        if ((findEventById(eventId)?.event?.content as? MessageContent)?.type?.shouldApplyMediaPolicy() == false) {
+                            return@run ActionResult.Inapplicable
+                        }
+                        var changed = false
+                        _mediaPolicy.update { policy ->
+                            policy.hide(eventId).also {
+                                changed = it != policy
+                            }
+                        }
+                        if (changed) {
+                            ActionResult.Success()
+                        } else {
+                            ActionResult.Inapplicable
+                        }
+                    }
+                    Action.Event.ToggleMedia -> {
+                        eventId ?: return@run ActionResult.Inapplicable
+                        if ((findEventById(eventId)?.event?.content as? MessageContent)?.type?.shouldApplyMediaPolicy() == false) {
+                            return@run ActionResult.Inapplicable
+                        }
+                        _mediaPolicy.update {
+                            it.toggle(eventId)
+                        }
+                        ActionResult.Success()
                     }
                 }
             }

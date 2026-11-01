@@ -60,6 +60,7 @@ fun ComposerAttachmentContent(
         when (attachment) {
             is Attachment.Image -> {
                 ImageMessageContent(
+                    eventId = null,
                     model = attachment.file,
                     minWidth = Dimens.Conversation.imageMinWidth,
                     minHeight = Dimens.Conversation.imageMinHeight,
@@ -70,6 +71,7 @@ fun ComposerAttachmentContent(
 
             is Attachment.Video -> {
                 VideoMessageContent(
+                    eventId = null,
                     model = attachment.thumbnail?.data ?: attachment.file,
                     minWidth = Dimens.Conversation.imageMinWidth,
                     minHeight = Dimens.Conversation.imageMinHeight,
@@ -83,6 +85,7 @@ fun ComposerAttachmentContent(
                     type = FileMessageRenderType.AUDIO,
                     filename = attachment.file.name,
                     messageMetadata = null,
+                    interactionState = null,
                 )
             }
 
@@ -91,6 +94,7 @@ fun ComposerAttachmentContent(
                     type = FileMessageRenderType.FILE,
                     filename = attachment.file.name,
                     messageMetadata = null,
+                    interactionState = null,
                 )
             }
         }
