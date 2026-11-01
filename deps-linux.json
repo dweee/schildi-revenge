@@ -5003,22 +5003,22 @@
   }
  },
  "https://www.jitpack.io/com/github/beeper": {
-  "matrix-messageformat-compose#messageformat-android/e38f150eff24644f2ffc451a7b0ec506f819c08d": {
-   "module": "sha256-lBNltkAUuHAn7pDq7M6882tD0sUSV6VX2wnafLKN4P4=",
-   "pom": "sha256-Tp0h6RMBT7mwyOJadC5rnEPafePfou8t8CZnJ4tY5gk="
+  "matrix-messageformat-compose#messageformat-android/51540078b543e7c17754db35904802f57f2ef52e": {
+   "module": "sha256-UF3R0+EYr3zmbs1EUF2fIBGGmaLuIBZeIOa5dQBjnU4=",
+   "pom": "sha256-Y/VS7iR2Ik0bgq8r9WB1SiDGV+nOAk11Kk/4pmRF29I="
   },
-  "matrix-messageformat-compose#messageformat-jvm/e38f150eff24644f2ffc451a7b0ec506f819c08d": {
-   "jar": "sha256-IOG+pPMVVtSScigGclAY9rOFGhE1Pn3LAry+x+17zkU=",
-   "module": "sha256-NQhPrRWnsSjraJM5RpECCGMBjFz3HhZfWvoBdamzNdw=",
-   "pom": "sha256-WVluqVmSP31mSmyu4D9jjbRlatQLp4XQEuwBz9ZCZOw="
+  "matrix-messageformat-compose#messageformat-jvm/51540078b543e7c17754db35904802f57f2ef52e": {
+   "jar": "sha256-wg8BzR+DSnGGlWgNa0rWv6YXtdG5Zs4gAc5cKfhUKlk=",
+   "module": "sha256-wYgtFcrfeJZiTAYqOPLjcBjZNYAWbMIlnQBegiZKkHU=",
+   "pom": "sha256-s0m7K1D0WY4nor3nFT43vkqwl/6ockaM5G4ROrk2Osw="
   },
-  "matrix-messageformat-compose#messageformat/e38f150eff24644f2ffc451a7b0ec506f819c08d": {
+  "matrix-messageformat-compose#messageformat/51540078b543e7c17754db35904802f57f2ef52e": {
    "jar": "sha256-swtSuuU+MpS8OiDuKQqxIvX8j/5M1+maux3D93XE8j0=",
-   "module": "sha256-sdX9QAV2/9rqwp1TZj1mcWqcCOAZkVDpfDAWdJbIYFM=",
-   "pom": "sha256-piCCZapxycKI9ASvw4yE4NKDu4e+W2AsTzEFpCeMI38="
+   "module": "sha256-D/0RxlwdcmxI4iZGtWAFPeXAYG+0yXTFyb2BsSfL5Rw=",
+   "pom": "sha256-nrcrXdfHarsx1pGCtzagtwtRx6/x5qjVv3pPVt5WPPQ="
   },
-  "matrix-messageformat-compose/messageformat-android/e38f150eff24644f2ffc451a7b0ec506f819c08d/messageformat-android-e38f150eff24644f2ffc451a7b0ec506f819c08d": {
-   "aar": "sha256-4TUrY7pD2vS321ppDGQ+hZX/lxwYwKb3QtIfvS96VDg="
+  "matrix-messageformat-compose/messageformat-android/51540078b543e7c17754db35904802f57f2ef52e/messageformat-android-51540078b543e7c17754db35904802f57f2ef52e": {
+   "aar": "sha256-WjiohDV2HX20ORtu82g+1w7XPp4X6tSLQve4fEUOuyo="
   }
  }
 }
