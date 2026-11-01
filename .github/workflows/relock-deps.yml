@@ -47,6 +47,10 @@ jobs:
             *) echo 'Unsupported system' >&2; exit 1 ;;
           esac
 
+      - name: Allow unprivileged user namespaces for bubblewrap
+        if: ${{ runner.os == 'Linux' }}
+        run: sudo sysctl -w kernel.apparmor_restrict_unprivileged_userns=0
+
       - name: Regenerate the pinned cache
         run: |
           set -eu
