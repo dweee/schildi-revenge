@@ -6,6 +6,10 @@ name: Relock Gradle dependency cache
 on:
   workflow_dispatch:
     inputs:
+      cache_only:
+        description: Cache existing Nix updater tooling without running Gradle or changing locks
+        type: boolean
+        default: false
       system:
         description: Nix system whose deps-*.json should be regenerated
         required: true
@@ -61,6 +65,8 @@ jobs:
         run: python3 ci/configure-niks3.py --oidc
 
       - name: Regenerate the pinned cache
+        env:
+          CACHE_ONLY: ${{ inputs.cache_only && 'true' || 'false' }}
         run: |
           set -eu
           rm -f result
@@ -68,7 +74,9 @@ jobs:
           python3 ci/retain-build-outputs.py --target "$target" --manifest cache-outputs.txt -- \
             nix build --option accept-flake-config false --no-write-lock-file \
             --print-out-paths -o result "$target"
-          env -u ACTIONS_ID_TOKEN_REQUEST_TOKEN -u ACTIONS_ID_TOKEN_REQUEST_URL ./result
+          if test "$CACHE_ONLY" != true; then
+            env -u ACTIONS_ID_TOKEN_REQUEST_TOKEN -u ACTIONS_ID_TOKEN_REQUEST_URL ./result
+          fi
           test -s "$DATA"
 
       - name: Remove private reader before exporting build data
@@ -91,7 +99,9 @@ jobs:
           compression-level: 0
           if-no-files-found: error
 
-      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+      - name: Save regenerated dependency metadata
+        if: ${{ inputs.cache_only != true }}
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         with:
           name: deps-${{ inputs.system }}
           path: ${{ env.DATA }}
