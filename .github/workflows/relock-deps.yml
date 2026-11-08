@@ -21,8 +21,13 @@ permissions:
 
 jobs:
   relock:
+    permissions:
+      contents: read
+      id-token: write
     runs-on: ${{ inputs.system == 'aarch64-darwin' && 'macos-15' || (inputs.system == 'aarch64-linux' && 'ubuntu-24.04-arm' || 'ubuntu-24.04') }}
     timeout-minutes: 240
+    outputs:
+      cache_ready: ${{ steps.cache_transfer.outcome }}
     steps:
       - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
         with:
@@ -51,14 +56,40 @@ jobs:
         if: ${{ runner.os == 'Linux' }}
         run: sudo sysctl -w kernel.apparmor_restrict_unprivileged_userns=0
 
+      - name: Configure read-only Niks3 access on the default branch
+        if: ${{ github.ref == format('refs/heads/{0}', github.event.repository.default_branch) }}
+        run: python3 ci/configure-niks3.py --oidc
+
       - name: Regenerate the pinned cache
         run: |
           set -eu
           rm -f result
-          nix build --option accept-flake-config false --no-write-lock-file \
-            --print-out-paths -o result ".#packages.${{ inputs.system }}.default.mitmCache.updateScript"
-          ./result
+          target=".#packages.${{ inputs.system }}.default.mitmCache.updateScript"
+          python3 ci/retain-build-outputs.py --target "$target" --manifest cache-outputs.txt -- \
+            nix build --option accept-flake-config false --no-write-lock-file \
+            --print-out-paths -o result "$target"
+          env -u ACTIONS_ID_TOKEN_REQUEST_TOKEN -u ACTIONS_ID_TOKEN_REQUEST_URL ./result
           test -s "$DATA"
+
+      - name: Remove private reader before exporting build data
+        if: ${{ always() }}
+        run: python3 ci/configure-niks3.py --cleanup
+
+      - name: Export completed public relock graph outputs
+        id: cache_transfer
+        if: ${{ always() && !cancelled() && hashFiles('cache-outputs.txt') != '' }}
+        env:
+          ATTIC_MAX_CLOSURE_MIB: ${{ vars.ATTIC_MAX_CLOSURE_MIB || '8192' }}
+        run: python3 ci/transfer-attic.py export --directory relock-transfer --manifest cache-outputs.txt
+
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        if: ${{ always() && !cancelled() && steps.cache_transfer.outcome == 'success' }}
+        with:
+          name: relock-${{ inputs.system }}-${{ github.sha }}
+          path: relock-transfer/
+          retention-days: 1
+          compression-level: 0
+          if-no-files-found: error
 
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         with:
@@ -66,3 +97,43 @@ jobs:
           path: ${{ env.DATA }}
           if-no-files-found: error
           retention-days: 7
+
+  publish:
+    needs: relock
+    if: ${{ always() && !cancelled() && needs.relock.outputs.cache_ready == 'success' && vars.NIKS3_PUSH_ENABLED == 'true' && github.ref == format('refs/heads/{0}', github.event.repository.default_branch) }}
+    permissions:
+      contents: read
+      id-token: write
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+        with:
+          persist-credentials: false
+      - uses: DeterminateSystems/determinate-nix-action@92957199488000b908fdad19f63711000965d8f3
+        with:
+          source-tag: v3.24.1
+          summarize: false
+          kvm: false
+          extra-conf: |
+            experimental-features = nix-command flakes
+            accept-flake-config = false
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093
+        with:
+          name: relock-${{ inputs.system }}-${{ github.sha }}
+          path: relock-transfer
+      - name: Read Niks3 before installing the pinned publisher
+        run: python3 ci/configure-niks3.py --oidc
+      - name: Install publisher and publish its completed bootstrap graph
+        run: |
+          bash ci/install-niks3.sh --retain-bootstrap
+          python3 ci/push-niks3.py --outputs niks3-bootstrap-outputs.txt
+      - name: Import public data and publish with S3 integrity verification
+        env:
+          ATTIC_MAX_CLOSURE_MIB: ${{ vars.ATTIC_MAX_CLOSURE_MIB || '8192' }}
+        run: |
+          python3 ci/transfer-attic.py import --directory relock-transfer
+          python3 ci/push-niks3.py --outputs relock-transfer/outputs.txt
+      - name: Remove job-local Niks3 reader
+        if: ${{ always() }}
+        run: python3 ci/configure-niks3.py --cleanup
