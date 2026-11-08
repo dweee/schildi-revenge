@@ -22,7 +22,7 @@ dependencyResolutionManagement {
         exclusiveContent {
             forRepository {
                 maven {
-                    url = URI("https://github.com/rustls/rustls-platform-verifier/raw/maven-archive/android-release-support/maven/")
+                    url = URI("https://raw.githubusercontent.com/rustls/rustls-platform-verifier/maven-archive/android-release-support/maven/")
                 }
             }
             filter {

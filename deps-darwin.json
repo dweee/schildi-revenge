@@ -1912,7 +1912,7 @@
    "pom": "sha256-HgiAfmI5ptl2LB7sDz5ZyIlrrm3O27iCLhlpyZzMpQE="
   }
  },
- "https://github.com/rustls/rustls-platform-verifier/raw/maven-archive/android-release-support/maven/org": {
+ "https://raw.githubusercontent.com/rustls/rustls-platform-verifier/maven-archive/android-release-support/maven/org": {
   "rustls#rustls-platform-verifier/0.2.0": {
    "pom": "sha256-eNy2mhog6R5yAX3ppnEEu6GHSn7Mjm3N+y/hqF3ms2I="
   },
