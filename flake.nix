@@ -11,7 +11,10 @@
       packageFor = system:
         let pkgs = import nixpkgs { inherit system; };
         in let
-          sourcePackage = pkgs.schildi-revenge.overrideAttrs (finalAttrs: _old: {
+          sourcePackage = pkgs.schildi-revenge.overrideAttrs (finalAttrs: old: {
+            # cargoSetupHook requires system AWS-LC for the SDK's aws-lc-sys.
+            nativeBuildInputs = old.nativeBuildInputs ++ [ pkgs.pkg-config ];
+            buildInputs = (old.buildInputs or []) ++ [ pkgs.aws-lc ];
             # The fork SDK lock can advance independently of the nixpkgs release.
             cargoDeps = pkgs.rustPlatform.importCargoLock {
               # Crate checksums come from the lock itself, so an SDK lock bump
