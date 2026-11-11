@@ -1,7 +1,7 @@
 {
   description = "schildi-revenge fork with standalone Nix packaging";
   inputs = {
-    nixpkgs.url = "github:nixos/nixpkgs/1d060086d60cb76a40cf37109f979d88a5bd6396";
+    nixpkgs.url = "github:nixos/nixpkgs/f4a03c008967841f2a0b3cb7c436fc6fc31671f6";
     self.submodules = true;
   };
   outputs = { self, nixpkgs, ... }:
@@ -11,7 +11,10 @@
       packageFor = system:
         let pkgs = import nixpkgs { inherit system; };
         in let
-          sourcePackage = pkgs.schildi-revenge.overrideAttrs (finalAttrs: _old: {
+          sourcePackage = pkgs.schildi-revenge.overrideAttrs (finalAttrs: old: {
+            # cargoSetupHook requires system libraries for these active SDK features.
+            nativeBuildInputs = old.nativeBuildInputs ++ [ pkgs.pkg-config ];
+            buildInputs = (old.buildInputs or []) ++ [ pkgs.aws-lc pkgs.zstd pkgs.sqlite ];
             # The fork SDK lock can advance independently of the nixpkgs release.
             cargoDeps = pkgs.rustPlatform.importCargoLock {
               # Crate checksums come from the lock itself, so an SDK lock bump
