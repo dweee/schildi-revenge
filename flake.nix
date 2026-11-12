@@ -1,7 +1,7 @@
 {
   description = "schildi-revenge fork with standalone Nix packaging";
   inputs = {
-    nixpkgs.url = "github:nixos/nixpkgs/f4a03c008967841f2a0b3cb7c436fc6fc31671f6";
+    nixpkgs.url = "github:nixos/nixpkgs/d4f25a3e562008648d45bcf2d70bcc7422cad84e";
     self.submodules = true;
   };
   outputs = { self, nixpkgs, ... }:
