@@ -698,11 +698,16 @@ class ConversationViewModel(
         awaitingRender: Boolean = cachedFullyRead.value?.awaitingRender ?: false,
     ): FullyReadEventState? {
         timelineState ?: return null
-        return timelineState.preferredTimeline.fullyReadEventId()?.let {
-            val eventId = EventId(it)
-            FullyReadEventState.from(eventId, timelineState, awaitingRender).also {
-                _cachedFullyRead.value = it
-            }
+        val timeline = timelineState.preferredTimeline
+        val cached = cachedFullyRead.value
+        val eventId = when {
+            timeline.mode !is Timeline.Mode.Thread ->
+                timeline.fullyReadEventId()?.let(::EventId) ?: return null
+            cached != null -> cached.readMarker
+            else -> timeline.latestUserReceiptEventId(sessionId.value)?.let(::EventId)
+        }
+        return FullyReadEventState.from(eventId, timelineState, awaitingRender).also {
+            _cachedFullyRead.value = it
         }
     }
 
@@ -755,17 +760,24 @@ class ConversationViewModel(
             scPreferencesStore.getCachedOrDefaultValue(ScPrefs.AUTO_MARK_AS_READ_READ_RECEIPT_TYPE),
             roomInfo.value,
         ) ?: return
+        val threadId = threadId.value
         GlobalActionsScope.launch {
             // Fresh room so receipts still get sent while the VM gets closed and cleaned up
             clientFlow.value?.getRoom(roomId)?.use { room ->
                 platformAutoDismissNotification(sessionId, roomId, listOf(latest))
-                room.sendMultipleReceipts(
-                    Receipts(
-                        fullyRead = latest,
-                        publicReadReceipt = if (receiptType == ReceiptType.READ) latest else null,
-                        privateReadReceipt = if (receiptType == ReceiptType.READ_PRIVATE) latest else null,
+                val result = if (threadId != null) {
+                    _cachedFullyRead.value = FullyReadEventState(latest)
+                    room.sendSingleReadReceipt(receiptType, latest, threadId)
+                } else {
+                    room.sendMultipleReceipts(
+                        Receipts(
+                            fullyRead = latest,
+                            publicReadReceipt = if (receiptType == ReceiptType.READ) latest else null,
+                            privateReadReceipt = if (receiptType == ReceiptType.READ_PRIVATE) latest else null,
+                        )
                     )
-                )
+                }
+                result
                     .onFailure { log.e("Failed to set read markers on UI dispose", it) }
                     .onSuccess { latestSentReadReceipt.value = latest }
             }
@@ -1938,6 +1950,7 @@ class ConversationViewModel(
                 }
 
                 Action.Conversation.MarkTimelineFullyRead -> {
+                    if (threadId.value != null) return@run ActionResult.Inapplicable
                     val timeline = activeTimeline.value ?: return@run ActionResult.Failure("Timeline not ready")
                     launchActionAsync(
                         "markTimelineFullyRead",
@@ -2361,11 +2374,13 @@ class ConversationViewModel(
     }
 
     private fun ActionContext.markEventAsRead(eventId: EventId, receiptType: ReceiptType): ActionResult {
+        if (receiptType == ReceiptType.FULLY_READ && threadId.value != null) return ActionResult.Inapplicable
         val timeline = timelineController.value ?: return ActionResult.Failure("Timeline not ready")
         return launchActionAsync("MarkEventAsRead", viewModelScope, Dispatchers.IO) {
             var result: ActionResult? = null
             timeline.invokeOnCurrentTimeline {
                 platformAutoDismissNotification(sessionId, roomId, listOf(eventId))
+                if (mode is Timeline.Mode.Thread) _cachedFullyRead.value = FullyReadEventState(eventId)
                 result = forceSendReadReceipt(eventId, receiptType)
                     .onFailure {
                         log.e("Failed to send read receipt $receiptType", it)
