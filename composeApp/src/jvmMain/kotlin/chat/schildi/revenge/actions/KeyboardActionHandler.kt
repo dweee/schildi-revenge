@@ -17,7 +17,6 @@ import androidx.compose.ui.input.key.KeyEventType.Companion.KeyUp
 import androidx.compose.ui.input.key.isAltPressed
 import androidx.compose.ui.input.key.isCtrlPressed
 import androidx.compose.ui.input.key.isShiftPressed
-import androidx.compose.ui.input.key.key
 import androidx.compose.ui.input.key.type
 import androidx.compose.ui.input.pointer.PointerEventType
 import androidx.compose.ui.input.pointer.PointerType
@@ -162,6 +161,7 @@ import shire.res.generated.resources.command_ambiguous_none_valid
 import shire.res.generated.resources.command_copied_content_to_clipboard
 import shire.res.generated.resources.command_copied_to_clipboard
 import shire.res.generated.resources.command_copy_name_full_account_data
+import shire.res.generated.resources.command_copy_name_push_rules
 import shire.res.generated.resources.command_external_application_launched
 import shire.res.generated.resources.command_not_applicable
 import shire.res.generated.resources.command_not_found
@@ -793,6 +793,7 @@ class KeyboardActionHandler(
     }
 
     fun onPreviewKeyEvent(event: KeyEvent): Boolean {
+        val key = event.layoutAwareKey
         val trigger = event.toTrigger() ?: return false
         val focused = currentFocused()
         val contextMenu = _currentOpenContextMenu.value
@@ -803,11 +804,11 @@ class KeyboardActionHandler(
         if (!event.isPrimaryModifierPressed && contextMenu == null) {
             val currentActiveEditableId = activeEditAbleId.value
             focusedKeyConsumers.value.forEach { (focusId, role) ->
-                if (role.consumesKeyWhitelist != null && event.key !in role.consumesKeyWhitelist) {
+                if (role.consumesKeyWhitelist != null && key !in role.consumesKeyWhitelist) {
                     return false
                 }
                 if (role.consumesKeyWhitelistDuringEdit != null && currentActiveEditableId != null) {
-                    if (event.key in role.consumesKeyWhitelistDuringEdit) {
+                    if (key in role.consumesKeyWhitelistDuringEdit) {
                         return@forEach
                     }
                     val editId = focusableTargets[focusId]?.actions?.editActions?.editId
@@ -820,7 +821,7 @@ class KeyboardActionHandler(
         return when (event.type) {
             KeyDown -> {
                 val consumed = if (contextMenu != null) {
-                    handleContextMenuEvent(event, contextMenuEntries, contextMenu.focusId, contextMenu.menuId)
+                    handleContextMenuEvent(key, contextMenuEntries, contextMenu.focusId, contextMenu.menuId)
                 } else when (val mode = mode.value) {
                     is KeyboardActionMode.Navigation -> {
                         val result = handleNavigationEvent(trigger, focused)
@@ -986,15 +987,15 @@ class KeyboardActionHandler(
     }
 
     private fun handleContextMenuEvent(
-        event: KeyEvent,
+        key: Key,
         contextMenuEntries: List<ContextMenuEntry>?,
         focusId: Uuid,
         menuId: Uuid,
     ): Boolean {
-        when (event.key) {
+        when (key) {
             Key.Escape -> dismissContextMenu(menuId)
             else -> {
-                val action = contextMenuEntries?.find { it.keyboardShortcut == event.key }
+                val action = contextMenuEntries?.find { it.keyboardShortcut == key }
                 if (action != null) {
                     handleContextMenuEntry(focusId, menuId, action)
                 }
@@ -2176,6 +2177,32 @@ class KeyboardActionHandler(
                         client.setAccountData(eventType, content).toActionResult()
                     }
                 }
+                Action.Global.CopyPushRules,
+                Action.Global.ViewPushRules -> {
+                    val sessionId = SessionId(args.firstOrNull().orActionValidationError())
+                    val client = UiState.currentClientFor(sessionId) ?: return ActionResult.Failure("Client not ready")
+                    val actionId = if (action == Action.Global.CopyPushRules) "copyPushRules" else "viewPushRules"
+                    context.launchActionAsync(
+                        actionId,
+                        GlobalActionsScope,
+                        Dispatchers.IO,
+                        actionId,
+                        notifyProcessing = true,
+                    ) {
+                        val result = client.notificationSettingsService.getRawPushRules()
+                        if (result.isSuccess) {
+                            val content = result.getOrNull()?.toPrettyJson()
+                                ?: return@launchActionAsync ActionResult.Failure("No cached push rules found")
+                            if (action == Action.Global.CopyPushRules) {
+                                context.copyToClipboard(content, Res.string.command_copy_name_push_rules.toStringHolder())
+                            } else {
+                                context.viewInExternalApp(content, ".json")
+                            }
+                        } else {
+                            result.toActionResult()
+                        }
+                    }
+                }
                 Action.Global.CreateRoom -> {
                     val sessionId = SessionId(args.firstOrNull().orActionValidationError())
                     val name = args.getOrNull(1)
@@ -3296,6 +3323,7 @@ class KeyboardActionHandler(
 }
 
 private fun KeyEvent.toTrigger(): KeyTrigger? {
+    val key = layoutAwareKey
     val rawKey = KeyMapped.entries.find { it.key.keyCode == key.keyCode } ?: return null
     return KeyTrigger(
         rawKey = rawKey,

@@ -1,5 +1,6 @@
 package chat.schildi.revenge.actions
 
+import androidx.compose.ui.input.key.Key
 import androidx.compose.ui.input.key.KeyEvent
 import androidx.compose.ui.input.key.isAltPressed
 import androidx.compose.ui.input.key.isCtrlPressed
@@ -16,6 +17,8 @@ private val isMacOs = SystemInfo.getOs() == OperatingSystem.Mac
  */
 val KeyEvent.isPrimaryModifierPressed: Boolean
     get() = isCtrlPressed || (isMacOs && isMetaPressed)
+
+internal expect val KeyEvent.layoutAwareKey: Key
 
 val KeyEvent.isOnlyShiftPressed: Boolean
     get() = isShiftPressed && !isCtrlPressed && !isAltPressed && !isMetaPressed
