@@ -21,7 +21,12 @@ let
     defaultJava = jbr;
   }).wrapped;
 in
-(schildi-revenge.override {gradle_9 = gradle; jdk21 = jbr;}).overrideAttrs (finalAttrs: old: {
+(schildi-revenge.override (args:
+  {gradle_9 = gradle;}
+  // lib.optionalAttrs (args ? jdk21) {jdk21 = jbr;}
+  // lib.optionalAttrs (args ? jetbrains) {
+    jetbrains = args.jetbrains // {jdk-no-jcef = jbr;};
+  })).overrideAttrs (finalAttrs: old: {
   # macOS polish lives in the fork source. Bundle packaging expects
   # graphics/ic_launcher.icns, which postPatch generates from the launcher PNG.
   nativeBuildInputs = old.nativeBuildInputs ++ [imagemagick python3];
