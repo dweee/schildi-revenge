@@ -43,7 +43,7 @@ stdenvNoCC.mkDerivation (finalAttrs: {
   meta = {
     description = "JetBrains Runtime 21 SDK for SchildiChat Revenge on macOS";
     homepage = "https://github.com/JetBrains/JetBrainsRuntime";
-    license = lib.licenses.gpl2Classpath;
+    license = with lib.licenses; [gpl2Only classpathException20];
     sourceProvenance = [lib.sourceTypes.binaryNativeCode];
     platforms = lib.platforms.darwin;
   };
