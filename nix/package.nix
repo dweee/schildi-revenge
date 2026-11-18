@@ -1,4 +1,5 @@
 {
+  callPackage,
   gradle-packages,
   gradle_9,
   imagemagick,
@@ -12,14 +13,15 @@
 # Re-lock from this repository: nix build .#schildi-revenge.mitmCache.updateScript
 # then run ./result and review the generated dependency metadata.
 let
+  jbr = callPackage ./jbr-darwin.nix {};
   # deps.json contains Kotlin DSL 6.7.3 from Gradle 9.7.1.
   gradle = (gradle-packages.mkGradle {
     version = "9.7.1";
     hash = "sha256-rNU/HtrwLxqP+Zh5+KNLMCZhoFfZsGOunjW1UvgE0go=";
-    defaultJava = gradle_9.jdk;
+    defaultJava = jbr;
   }).wrapped;
 in
-(schildi-revenge.override {gradle_9 = gradle;}).overrideAttrs (finalAttrs: old: {
+(schildi-revenge.override {gradle_9 = gradle; jdk21 = jbr;}).overrideAttrs (finalAttrs: old: {
   # macOS polish lives in the fork source. Bundle packaging expects
   # graphics/ic_launcher.icns, which postPatch generates from the launcher PNG.
   nativeBuildInputs = old.nativeBuildInputs ++ [imagemagick python3];
