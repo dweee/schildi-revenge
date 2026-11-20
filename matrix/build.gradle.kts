@@ -19,7 +19,7 @@ kotlin {
         compileSdk = 37
         minSdk = 26
         compilerOptions {
-            jvmTarget.set(org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_11)
+            jvmTarget.set(org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_21)
         }
     }
 
@@ -31,6 +31,7 @@ kotlin {
             )
             dependencies {
                 api(projects.matrixRustBindings)
+                api(projects.rtcRustBindings)
                 compileOnly(project(mapOf("path" to ":matrixRustBindings", "configuration" to "jvmApiElements")))
                 // Compatibility classes for Android specifics that we don't care about but got from Element X files,
                 // so we don't need to change those classes too much.
@@ -57,6 +58,7 @@ kotlin {
             )
             dependencies {
                 api(projects.matrixRustBindings)
+                api(projects.rtcRustBindings)
                 compileOnly(project(mapOf("path" to ":matrixRustBindings", "configuration" to "androidApiElements")))
                 api(projects.shim)
                 implementation(libs.kotlinx.coroutines.core)
