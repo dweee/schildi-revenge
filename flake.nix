@@ -1,7 +1,7 @@
 {
   description = "schildi-revenge fork with standalone Nix packaging";
   inputs = {
-    nixpkgs.url = "github:nixos/nixpkgs/f4a03c008967841f2a0b3cb7c436fc6fc31671f6";
+    nixpkgs.url = "github:nixos/nixpkgs/04906337b6d53e8bb0eaf0470ae9f070a4d4eb55";
     self.submodules = true;
   };
   outputs = { self, nixpkgs, ... }:
@@ -11,7 +11,17 @@
       packageFor = system:
         let pkgs = import nixpkgs { inherit system; };
         in let
-          sourcePackage = pkgs.schildi-revenge.overrideAttrs (finalAttrs: old: {
+          # The Linux offline locks were generated with Gradle 9.8.2.
+          # Keep the compiler/plugin pair aligned while nixpkgs advances.
+          linuxGradle = (pkgs.gradle-packages.mkGradle {
+            version = "9.8.2";
+            hash = "sha256-Ib1dot5JtkKQQHfzjA79x3eOkrPtCIk5LcphuX44lgc=";
+            defaultJava = pkgs.jdk25;
+          }).wrapped;
+          basePackage = if pkgs.stdenv.hostPlatform.isLinux
+            then pkgs.schildi-revenge.override { gradle_9 = linuxGradle; }
+            else pkgs.schildi-revenge;
+          sourcePackage = basePackage.overrideAttrs (finalAttrs: old: {
             # cargoSetupHook requires system libraries for these active SDK features.
             nativeBuildInputs = old.nativeBuildInputs ++ [ pkgs.pkg-config ];
             buildInputs = (old.buildInputs or []) ++ [ pkgs.aws-lc pkgs.zstd pkgs.sqlite ];
@@ -24,7 +34,7 @@
               allowBuiltinFetchGit = true;
             };
             # Keep the standalone fork cache current with upstream dependency bumps.
-            mitmCache = pkgs.gradle_9.fetchDeps {
+            mitmCache = linuxGradle.fetchDeps {
               pkg = finalAttrs.finalPackage;
               data = ./deps-linux.json;
             };
@@ -42,7 +52,7 @@
         in if pkgs.stdenv.hostPlatform.isDarwin
           then pkgs.callPackage ./nix/package.nix { schildi-revenge = sourcePackage; }
           else if pkgs.stdenv.hostPlatform.isAarch64
-          then pkgs.callPackage ./nix/aarch64-linux.nix { schildi-revenge = sourcePackage; }
+          then pkgs.callPackage ./nix/aarch64-linux.nix { schildi-revenge = sourcePackage; gradle_9 = linuxGradle; }
           else sourcePackage;
     in {
       packages = forAllSystems (system:
