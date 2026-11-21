@@ -7,21 +7,23 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
-import chat.schildi.matrixsdk.ScTimelineFilterSettings
-import chat.schildi.matrixsdk.urlpreview.UrlPreviewProvider
-import chat.schildi.matrixsdk.urlpreview.UrlPreviewStateProvider
-import chat.schildi.revenge.preferences.RevengePrefs
+import chat.schildi.lib.preferences.ComposerFormat
 import chat.schildi.lib.preferences.ScPref
 import chat.schildi.lib.preferences.ScPreferencesStore
 import chat.schildi.lib.preferences.ScPrefs
 import chat.schildi.lib.preferences.safeLookup
-import chat.schildi.revenge.TitleProvider
-import chat.schildi.revenge.UiState
+import chat.schildi.matrixsdk.ScTimelineFilterSettings
+import chat.schildi.matrixsdk.urlpreview.UrlPreviewProvider
+import chat.schildi.matrixsdk.urlpreview.UrlPreviewStateProvider
 import chat.schildi.resources.ComposableStringHolder
+import chat.schildi.resources.StringResourceHolder
+import chat.schildi.resources.toStringHolder
 import chat.schildi.revenge.Destination
 import chat.schildi.revenge.GlobalActionsScope
 import chat.schildi.revenge.MessageFormatDefaults
 import chat.schildi.revenge.PrettyJson
+import chat.schildi.revenge.TitleProvider
+import chat.schildi.revenge.UiState
 import chat.schildi.revenge.actions.ActionContext
 import chat.schildi.revenge.actions.ActionResult
 import chat.schildi.revenge.actions.AppMessage
@@ -39,23 +41,20 @@ import chat.schildi.revenge.actions.mapActionResult
 import chat.schildi.revenge.actions.orActionInapplicable
 import chat.schildi.revenge.actions.orActionValidationError
 import chat.schildi.revenge.actions.parseRoomStateSnapshot
+import chat.schildi.revenge.actions.platformHasUserFacingFilePaths
 import chat.schildi.revenge.actions.platformOpenFile
 import chat.schildi.revenge.actions.platformPersistDownload
 import chat.schildi.revenge.actions.toActionResult
+import chat.schildi.revenge.compose.destination.conversation.virtual.TimelineItemDebugLineInstance
 import chat.schildi.revenge.compose.search.SearchProvider
-import chat.schildi.resources.StringResourceHolder
 import chat.schildi.revenge.compose.util.insertAtCursor
 import chat.schildi.revenge.compose.util.insertTextFieldValue
-import chat.schildi.resources.toStringHolder
 import chat.schildi.revenge.config.keybindings.Action
 import chat.schildi.revenge.config.keybindings.ActionArgumentPrimitive
 import chat.schildi.revenge.config.keybindings.KeyTrigger
 import chat.schildi.revenge.media.MediaDownloadRepo
 import chat.schildi.revenge.model.Attachment
 import chat.schildi.revenge.model.CheckpointLoadState
-import chat.schildi.lib.preferences.ComposerFormat
-import chat.schildi.revenge.actions.platformHasUserFacingFilePaths
-import chat.schildi.revenge.compose.destination.conversation.virtual.TimelineItemDebugLineInstance
 import chat.schildi.revenge.model.ComposerRoomInfo
 import chat.schildi.revenge.model.ComposerSuggestion
 import chat.schildi.revenge.model.ComposerSuggestionsProvider
@@ -85,11 +84,15 @@ import chat.schildi.revenge.model.shouldApplyMediaPolicy
 import chat.schildi.revenge.model.shouldSendTypingIndicator
 import chat.schildi.revenge.notification.platformAutoDismissNotification
 import chat.schildi.revenge.notification.platformDismissNotification
+import chat.schildi.revenge.plaintext.EventTextFormat
+import chat.schildi.revenge.plaintext.limit
+import chat.schildi.revenge.preferences.RevengePrefs
 import chat.schildi.revenge.toDestination
 import chat.schildi.revenge.toPrettyJson
-import chat.schildi.revenge.util.tryOrNull
+import chat.schildi.revenge.util.combine
 import chat.schildi.revenge.util.filepicker.FilePicker
 import chat.schildi.revenge.util.flowClosable
+import chat.schildi.revenge.util.tryOrNull
 import co.touchlab.kermit.Logger
 import com.beeper.android.messageformat.MatrixFormatInteractionState
 import com.beeper.android.messageformat.MatrixToLink
@@ -165,6 +168,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.debounce
 import kotlinx.coroutines.flow.distinctUntilChanged
@@ -676,6 +680,20 @@ class ConversationViewModel(
     val activeTimeline = activeTimelineState.map { it?.preferredTimeline }
         .stateIn(viewModelScope, SharingStarted.Eagerly, null)
 
+    private val threadRoot = combine(activeTimeline, threadId) { timeline, threadId ->
+        timeline to threadId
+    }.map { (timeline, threadRootId) ->
+        if (timeline == null || threadRootId == null) {
+            null
+        } else {
+            timeline.loadReplyDetails(EventId(threadRootId.value))
+        }
+    }.stateIn(
+        viewModelScope,
+        SharingStarted.Eagerly,
+        null,
+    )
+
     /**
      * @return Whether successful (nothing to do counts as success), such that false indicates a retry may help later.
      */
@@ -814,11 +832,10 @@ class ConversationViewModel(
         if (query.isNullOrBlank() || items == null) {
             items
         } else {
-            val lowerQuery = query.lowercase()
             items.flatMap {
                 when (it) {
                     is MatrixTimelineItem.Event -> {
-                        if ((it.event.content as? MessageContent)?.body?.lowercase()?.contains(lowerQuery) == true) {
+                        if (it.event.content.matchesSearch(query)) {
                             listOf(
                                 MatrixTimelineItem.Virtual(
                                     UniqueId("search_date_${it.eventId}"),
@@ -1509,7 +1526,8 @@ class ConversationViewModel(
         userProfile,
         roomMembersById,
         threadId,
-    ) { info, preview, user, roomMembers, threadId ->
+        threadRoot,
+    ) { info, preview, user, roomMembers, threadId, threadRoot ->
         windowTitle(
             roomInfo = info,
             roomPreview = preview,
@@ -1517,6 +1535,16 @@ class ConversationViewModel(
             roomUserDisplayName = roomMembers[sessionId]?.displayName,
             sessionId = sessionId,
             isThread = threadId != null,
+            threadRootText = (threadRoot as? InReplyTo.Ready)?.let { threadRoot ->
+                EventTextFormat.eventToTextSuspend(
+                    content = threadRoot.content,
+                    messageMetadata = null,
+                    senderProfile = threadRoot.senderProfile,
+                    senderId = threadRoot.senderId,
+                    stripNewlines = true,
+                ).limit(80)
+
+            }
         )
     }.filterNotNull()
 
@@ -1643,23 +1671,19 @@ class ConversationViewModel(
         return destination is Destination.Conversation && destination.sessionId == sessionId && destination.roomId == roomId
     }
 
-    fun paginateForward() {
-        viewModelScope.launch(Dispatchers.IO) {
-            log.d("Request forward pagination")
-            timelineController.value?.paginate(Timeline.PaginationDirection.FORWARDS)
-                ?.onFailure { log.w("Cannot paginate forwards") }
-                ?.onSuccess { log.d("Paginated forwards") }
-        }
-    }
+    suspend fun paginateForward(): Result<Boolean>? = viewModelScope.async(Dispatchers.IO) {
+        log.d("Request forward pagination")
+        timelineController.value?.paginate(Timeline.PaginationDirection.FORWARDS)
+            ?.onFailure { log.w("Cannot paginate forwards") }
+            ?.onSuccess { log.d("Paginated forwards") }
+    }.await()
 
-    fun paginateBackward() {
-        viewModelScope.launch(Dispatchers.IO) {
-            log.d("Request backward pagination")
-            timelineController.value?.paginate(Timeline.PaginationDirection.BACKWARDS)
-                ?.onFailure { log.w("Cannot paginate backwards") }
-                ?.onSuccess { log.d("Paginated backwards") }
-        }
-    }
+    suspend fun paginateBackward(): Result<Boolean>? = viewModelScope.async(Dispatchers.IO) {
+        log.d("Request backward pagination")
+        timelineController.value?.paginate(Timeline.PaginationDirection.BACKWARDS)
+            ?.onFailure { log.w("Cannot paginate backwards") }
+            ?.onSuccess { log.d("Paginated backwards") }
+    }.await()
 
     override val roomActionProvider = RoomActionProvider(
         sessionId = sessionId,
@@ -3249,6 +3273,7 @@ class ConversationViewModel(
             roomUserDisplayName: String? = null,
             sessionId: SessionId,
             isThread: Boolean = false,
+            threadRootText: String? = null,
         ): ComposableStringHolder? {
             return (roomInfo?.privateRoomName ?: roomInfo?.name ?: roomPreview?.name)?.let { roomName ->
                 val title = buildString {
@@ -3271,6 +3296,10 @@ class ConversationViewModel(
                         }
                     } else {
                         append(sessionId.value)
+                    }
+                    if (isThread && threadRootText != null) {
+                        append(" - ")
+                        append(threadRootText)
                     }
                 }.toStringHolder()
                 if (isThread) {

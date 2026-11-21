@@ -14,10 +14,10 @@
 # then run ./result and review the generated dependency metadata.
 let
   jbr = callPackage ./jbr-darwin.nix {};
-  # deps.json contains Kotlin DSL 6.7.3 from Gradle 9.7.1.
+  # Match upstream gradle-wrapper.properties (9.9.1).
   gradle = (gradle-packages.mkGradle {
-    version = "9.7.1";
-    hash = "sha256-rNU/HtrwLxqP+Zh5+KNLMCZhoFfZsGOunjW1UvgE0go=";
+    version = "9.9.1";
+    hash = "sha256-2KGKeoQd1d+CXTWmhfrW8tfxKsDCgOV7Z8J7SlILoig=";
     defaultJava = jbr;
   }).wrapped;
 in
