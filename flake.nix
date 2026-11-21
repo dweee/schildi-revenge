@@ -11,16 +11,19 @@
       packageFor = system:
         let pkgs = import nixpkgs { inherit system; };
         in let
-          # The Linux offline locks were generated with Gradle 9.8.2.
-          # Keep the compiler/plugin pair aligned while nixpkgs advances.
+          # Match upstream gradle-wrapper.properties (9.9.1) across Linux locks.
           linuxGradle = (pkgs.gradle-packages.mkGradle {
-            version = "9.8.2";
-            hash = "sha256-Ib1dot5JtkKQQHfzjA79x3eOkrPtCIk5LcphuX44lgc=";
+            version = "9.9.1";
+            hash = "sha256-2KGKeoQd1d+CXTWmhfrW8tfxKsDCgOV7Z8J7SlILoig=";
             defaultJava = pkgs.jdk25;
           }).wrapped;
           basePackage = if pkgs.stdenv.hostPlatform.isLinux
             then pkgs.schildi-revenge.override { gradle_9 = linuxGradle; }
             else pkgs.schildi-revenge;
+          rtcCargoDeps = pkgs.rustPlatform.importCargoLock {
+            lockFile = self + "/matrix-rust-rtc/Cargo.lock";
+            allowBuiltinFetchGit = true;
+          };
           sourcePackage = basePackage.overrideAttrs (finalAttrs: old: {
             # cargoSetupHook requires system libraries for these active SDK features.
             nativeBuildInputs = old.nativeBuildInputs ++ [ pkgs.pkg-config ];
@@ -33,6 +36,23 @@
               lockFile = self + "/matrix-rust-sdk/Cargo.lock";
               allowBuiltinFetchGit = true;
             };
+            postPatch = (old.postPatch or "") + ''
+              # Isolate matrix-rust-sdk and matrix-rust-rtc Cargo vendor configs so
+              # both Rust workspaces build offline from their own lockfiles.
+              if [ -f ../.cargo/config.toml ]; then
+                mkdir -p matrix-rust-sdk/.cargo
+                sdkVendor="''${cargoDepsCopy:-$(realpath ../cargo-vendor-dir)}"
+                sed "s|directory = \"cargo-vendor-dir\"|directory = \"$sdkVendor\"|" \
+                  ../.cargo/config.toml > matrix-rust-sdk/.cargo/config.toml
+                rm -f ../.cargo/config.toml
+              fi
+              rtcVendor="$TMPDIR/matrix-rust-rtc-vendor"
+              cp -Lr --reflink=auto -- ${rtcCargoDeps} "$rtcVendor"
+              chmod -R u+w -- "$rtcVendor"
+              mkdir -p matrix-rust-rtc/.cargo
+              sed "s|directory = \"cargo-vendor-dir\"|directory = \"$rtcVendor\"|" \
+                "$rtcVendor/.cargo/config.toml" > matrix-rust-rtc/.cargo/config.toml
+            '';
             # Keep the standalone fork cache current with upstream dependency bumps.
             mitmCache = linuxGradle.fetchDeps {
               pkg = finalAttrs.finalPackage;
