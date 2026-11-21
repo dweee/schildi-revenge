@@ -73,15 +73,25 @@ private inline fun String.toDestinationOrNull(
     context: CommandArgContext?,
     resolveRoomId: (SessionId, String) -> RoomId?,
 ): Destination? {
-    return when (this.toDestinationEnum()) {
+    return when (val destinationEnum = this.toDestinationEnum()) {
         DestinationEnum.Splash -> Destination.Splash
         DestinationEnum.AccountManagement -> Destination.AccountManagement()
         DestinationEnum.Inbox -> Destination.Inbox
+        DestinationEnum.ConversationOpenedAtBottom,
         DestinationEnum.Conversation -> {
             tryOrNull {
                 val sessionId = args.getOrNull(0)?.let(::SessionId) ?: context!!.ensureSessionId()
                 val roomId = args.getOrNull(1)?.let { resolveRoomId(sessionId, it) } ?: context!!.ensureRoomId()
-                Destination.Conversation(sessionId, roomId, null)
+                val preferOpenAtUnread = when (destinationEnum) {
+                    DestinationEnum.ConversationOpenedAtBottom -> false
+                    else -> null // Resolve setting on open
+                }
+                Destination.Conversation(
+                    sessionId,
+                    roomId,
+                    null,
+                    preferOpenAtUnread = preferOpenAtUnread,
+                )
             }
         }
         DestinationEnum.CreateRoom -> {
@@ -125,6 +135,13 @@ private inline fun String.toDestinationOrNull(
                 val sessionId = args.getOrNull(0)?.let(::SessionId) ?: context!!.ensureSessionId()
                 val roomId = args.getOrNull(1)?.let { resolveRoomId(sessionId, it) } ?: context!!.ensureRoomId()
                 Destination.RoomMembers(sessionId, roomId)
+            }
+        }
+        DestinationEnum.RoomThreads -> {
+            tryOrNull {
+                val sessionId = args.getOrNull(0)?.let(::SessionId) ?: context!!.ensureSessionId()
+                val roomId = args.getOrNull(1)?.let { resolveRoomId(sessionId, it) } ?: context!!.ensureRoomId()
+                Destination.RoomThreads(sessionId, roomId)
             }
         }
         DestinationEnum.MessageReactions -> {

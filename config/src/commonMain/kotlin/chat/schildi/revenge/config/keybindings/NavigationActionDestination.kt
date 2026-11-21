@@ -11,8 +11,10 @@ enum class DestinationEnum(
     CreateRoom("CreateRoom", listOf("createRoom")),
     ConversationThread("ConversationThread", listOf("thread")),
     ConversationPins("ConversationPins", listOf("pinnedMessages")),
+    ConversationOpenedAtBottom("ConversationOpenedAtBottom"), // Alias to Conversation but bypass open-at-unread setting
     RoomDetails("RoomDetails", listOf("roomDetails", "roomInfo")),
     RoomMembers("RoomMembers", listOf("members")),
+    RoomThreads("RoomThreads", listOf("threads")),
     MessageReactions("MessageReactions", listOf("reactions")),
     MessageReadReceipts("MessageReadReceipts", listOf("readReceipts", "receipts")),
     UserDetails("UserDetails", listOf("user")),
@@ -63,6 +65,7 @@ val ALLOWED_DESTINATION_STRINGS = listOf(
     DestinationEnum.Inbox.allDestinationNames(),
     DestinationEnum.AccountManagement.allDestinationNames(),
     DestinationEnum.Conversation.allDestinationNames(),
+    DestinationEnum.ConversationOpenedAtBottom.allDestinationNames(),
     DestinationEnum.CreateRoom.allDestinationNames(),
     DestinationEnum.ConversationPins.allDestinationNames(),
     DestinationEnum.About.allDestinationNames(),
@@ -70,6 +73,7 @@ val ALLOWED_DESTINATION_STRINGS = listOf(
     DestinationEnum.Settings.allDestinationNames(),
     DestinationEnum.RoomDetails.allDestinationNames(),
     DestinationEnum.RoomMembers.allDestinationNames(),
+    DestinationEnum.RoomThreads.allDestinationNames(),
     DestinationEnum.MessageReactions.allDestinationNames(),
     DestinationEnum.MessageReadReceipts.allDestinationNames(),
     DestinationEnum.SpaceDiscovery.allDestinationNames(),
@@ -82,8 +86,8 @@ val ALLOWED_DESTINATION_STRINGS = listOf(
     DestinationEnum.SpaceDiscoveryDetailsSplit.allDestinationNames(),
 ).flatten()
 
-fun String.destinationRequiresSessionId() = this in listOf("chat", "conversation", "room", "roomDetails", "members", "reactions", "chatDetails", "conversationDetails", "accountDevTools", "roomDevTools", "pushHistory", "spaceDiscovery", "spaceDetails", "verificationRequest")
-fun String.destinationRequiresResolvableRoom() = this in listOf("chat", "conversation", "room", "roomDetails", "members", "reactions", "chatDetails", "conversationDetails", "roomDevTools", "spaceDiscovery", "spaceDetails")
+fun String.destinationRequiresSessionId() = this in listOf("chat", "conversation", "room", "roomDetails", "members", "threads", "reactions", "chatDetails", "conversationDetails", "accountDevTools", "roomDevTools", "pushHistory", "spaceDiscovery", "spaceDetails", "verificationRequest")
+fun String.destinationRequiresResolvableRoom() = this in listOf("chat", "conversation", "room", "roomDetails", "members", "threads", "reactions", "chatDetails", "conversationDetails", "roomDevTools", "spaceDiscovery", "spaceDetails")
 fun String.destinationRequiresEventId() = this in listOf("reactions")
 
 data object NavigationDestinationSessionId : ActionArgumentContextBased {

@@ -7,6 +7,7 @@
     <string name="thread_in">Thread: %1$s</string>
     <string name="pinned_messages">Pinned messages</string>
     <string name="room_details_title">Room details</string>
+    <string name="threads_title">Threads</string>
     <string name="room_members_title_loading">Loading room members</string>
     <plurals name="room_members_title_loaded">
         <item quantity="one">%1$s members</item>
@@ -157,12 +158,14 @@
     <string name="action_download_and_open">Open</string>
     <string name="action_acknowledge">Acknowledge</string>
     <string name="action_show_room_members">Room members</string>
+    <string name="action_show_threads">Show threads</string>
     <string name="action_thread">Open thread</string>
     <string name="action_save">Save</string>
     <string name="action_save_changes">Save changes</string>
     <string name="action_notifications">Notifications</string>
     <string name="action_notifications_default">Default</string>
     <string name="action_notifications_all">All messages</string>
+    <string name="action_notifications_all_silent">All messages (silent)</string>
     <string name="action_notifications_mentions">Mentions only</string>
     <string name="action_notifications_none">None</string>
     <string name="action_catch_space_orphans">Catch space-orphans</string>
@@ -188,6 +191,7 @@
     <string name="action_close_unread">Close unread</string>
     <string name="action_space_discovery">Discover space</string>
     <string name="action_space_discovery_as">Discover space as %1$s</string>
+    <string name="action_open_at_recent_messages">Open at recent messages</string>
 
     <string name="command_success">Success: %1$s</string>
     <string name="command_loading_event">Loading %1$s</string>
@@ -555,7 +559,9 @@
     <string name="pref_debug_notifications_title">Debug notifications</string>
     <string name="pref_debug_notifications_summary">Post unresolved pushes as notifications</string>
     <string name="pref_open_at_unread_title">Open at unread</string>
-    <string name="pref_open_at_unread_summary">Open conversations at the last fully read message. Can slow down room open</string>
+    <string name="pref_open_at_unread_summary">Open unread conversations at the last fully read message. Can slow down room open</string>
+    <string name="pref_force_open_at_unread_title">Force open at unread</string>
+    <string name="pref_force_open_at_unread_summary">Open conversations at the fully read marker, even if the room has no unread messages as per read receipt.</string>
     <string name="pref_message_swipe_action_left_title">Left message swipe action</string>
     <string name="pref_message_swipe_action_right_title">Right message swipe action</string>
     <string name="pref_notification_action_primary_title">Primary notification action</string>
@@ -756,6 +762,7 @@
     <string name="empty_screen_placeholder_space">Selected space is empty</string>
     <string name="empty_screen_placeholder_inbox">No chats yet</string>
     <string name="empty_screen_placeholder_room_members">No known room members</string>
+    <string name="empty_screen_placeholder_threads">No known threads</string>
     <string name="empty_screen_placeholder_message_reactions">No message reactions</string>
     <string name="empty_screen_placeholder_message_read_receipts">No message read receipts</string>
     <string name="empty_screen_placeholder_unexpected">This screen is unexpectedly empty</string>

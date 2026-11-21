@@ -2,9 +2,9 @@ package chat.schildi.revenge.compose.destination.inbox
 
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Favorite
+import androidx.compose.material.icons.filled.KeyboardDoubleArrowDown
 import androidx.compose.material.icons.filled.LowPriority
 import androidx.compose.material.icons.filled.MeetingRoom
-import androidx.compose.material.icons.filled.Navigation
 import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material.icons.filled.Visibility
 import androidx.compose.material.icons.filled.Window
@@ -13,6 +13,7 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.remember
 import androidx.compose.ui.graphics.vector.rememberVectorPainter
 import androidx.compose.ui.input.key.Key
+import chat.schildi.lib.preferences.ScPrefs
 import chat.schildi.revenge.actions.LocalKeyboardActionHandler
 import chat.schildi.revenge.compose.components.ContextMenuActionEntry
 import chat.schildi.revenge.compose.components.ContextMenuDecoration
@@ -25,9 +26,11 @@ import chat.schildi.revenge.UiState
 import chat.schildi.revenge.compose.components.enterCommandModeContextMenuAction
 import chat.schildi.revenge.config.keybindings.Action
 import chat.schildi.revenge.config.keybindings.ActionRoomNotificationSetting
+import chat.schildi.revenge.config.keybindings.DestinationEnum
 import chat.schildi.revenge.model.InboxViewModel
 import chat.schildi.revenge.model.PendingAction
 import chat.schildi.revenge.model.ScopedRoomSummary
+import chat.schildi.revenge.preferences.value
 import io.element.android.libraries.matrix.api.room.RoomNotificationMode
 import io.element.android.libraries.matrix.api.room.RoomNotificationSettings
 import kotlinx.collections.immutable.ImmutableList
@@ -41,13 +44,14 @@ import shire.res.generated.resources.action_join
 import shire.res.generated.resources.action_leave
 import shire.res.generated.resources.action_mark_as_read
 import shire.res.generated.resources.action_mark_as_unread
-import shire.res.generated.resources.action_navigate_in_current
 import shire.res.generated.resources.action_navigate_in_new_window
 import shire.res.generated.resources.action_notifications
 import shire.res.generated.resources.action_notifications_all
+import shire.res.generated.resources.action_notifications_all_silent
 import shire.res.generated.resources.action_notifications_default
 import shire.res.generated.resources.action_notifications_mentions
 import shire.res.generated.resources.action_notifications_none
+import shire.res.generated.resources.action_open_at_recent_messages
 import shire.res.generated.resources.action_reject_invite
 import kotlin.uuid.Uuid
 
@@ -128,17 +132,22 @@ fun ScopedRoomSummary.contextMenu(inboxViewModel: InboxViewModel, focusId: Uuid)
                 keyboardShortcut = Key.L,
             ),
             ContextMenuActionEntry(
-                Res.string.action_navigate_in_current.toStringHolder(),
-                rememberVectorPainter(Icons.Default.Navigation),
-                Action.NavigationItem.NavigateCurrent,
-                keyboardShortcut = Key.O,
-            ),
-            ContextMenuActionEntry(
                 Res.string.action_navigate_in_new_window.toStringHolder(),
                 rememberVectorPainter(Icons.Default.Window),
                 Action.NavigationItem.NavigateInNewWindow,
                 keyboardShortcut = Key.W,
             ),
+            ContextMenuActionEntry(
+                Res.string.action_open_at_recent_messages.toStringHolder(),
+                rememberVectorPainter(Icons.Default.KeyboardDoubleArrowDown),
+                Action.Navigation.NavigateAuto,
+                actionArgs = persistentListOf(
+                    DestinationEnum.ConversationOpenedAtBottom.destName,
+                    sessionId.value,
+                    key.roomId.value,
+                ),
+                keyboardShortcut = Key.O,
+            ).takeIf { ScPrefs.OPEN_AT_UNREAD.value() },
             ContextMenuSubmenuEntry(
                 Res.string.action_notifications.toStringHolder(),
                 rememberVectorPainter(Icons.Default.Notifications),
@@ -160,6 +169,15 @@ fun ScopedRoomSummary.contextMenu(inboxViewModel: InboxViewModel, focusId: Uuid)
                         actionArgs = persistentListOf(ActionRoomNotificationSetting.All.name),
                         keyboardShortcut = Key.A,
                         decoration = notificationModeCheckMark(RoomNotificationMode.ALL_MESSAGES, notificationSettings),
+                        autoCloseMenu = false,
+                    ),
+                    ContextMenuActionEntry(
+                        Res.string.action_notifications_all_silent.toStringHolder(),
+                        null,
+                        Action.Room.SetRoomNotifications,
+                        actionArgs = persistentListOf(ActionRoomNotificationSetting.AllSilent.name),
+                        keyboardShortcut = Key.S,
+                        decoration = notificationModeCheckMark(RoomNotificationMode.ALL_MESSAGES_SILENT, notificationSettings),
                         autoCloseMenu = false,
                     ),
                     ContextMenuActionEntry(

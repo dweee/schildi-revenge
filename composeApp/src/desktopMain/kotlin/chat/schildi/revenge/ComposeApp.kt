@@ -129,6 +129,7 @@ object ComposeApp {
             LaunchedEffect(Unit) {
                 RevengePrefs.prefetch()
                 DesktopNotifier.initialize()
+                AwtUriOpenHandler.install()
                 if (initialCommand != null) {
                     UiState.headlessKeyboardActionHandler?.executeCommandFromIpc(initialCommand)
                 }
