@@ -40,6 +40,7 @@ sealed interface ActionArgumentContextBased : ActionArgument {
 enum class ActionRoomNotificationSetting(val aliases: List<String> = emptyList()) {
     Default(aliases = listOf("followDefault")),
     All(aliases = listOf("allMessages")),
+    AllSilent(aliases = listOf("allMessagesSilent")),
     Mentions(aliases = listOf("mentionsAndKeywords")),
     Mute(aliases = listOf("none"));
     companion object {
@@ -251,6 +252,7 @@ sealed interface Action {
     ) : Action {
         NavigateCurrent(aliases = listOf("navigate", "nav")),
         NavigateInNewWindow(aliases = listOf("open", "window")),
+        NavigateAuto,
     }
     enum class CopyAble(
         override val aliases: kotlin.collections.List<String> = emptyList(),
