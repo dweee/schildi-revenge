@@ -39,7 +39,7 @@ fun ConversationDetailsMultiPaneScreen(
             destination.details.navigate(Destination.MultiPaneRoomInfoPlaceholder, NavigationPreference.REPLACE)
         }
         MultiPaneLayout(
-            outerDestination = destination.destinationId,
+            outerDestination = destination,
             innerDestinations =
                 listOfNotNull(
                     if (collapseSinglePane && hasDetails) {
@@ -85,6 +85,7 @@ private fun DestinationStateHolder.wrapped(
             allowedDetailsDestinations = listOfNotNull(
                 DestinationEnum.RoomDetails,
                 DestinationEnum.RoomMembers,
+                DestinationEnum.RoomThreads,
                 DestinationEnum.MessageReactions,
                 DestinationEnum.MessageReadReceipts,
                 DestinationEnum.UserDetails,

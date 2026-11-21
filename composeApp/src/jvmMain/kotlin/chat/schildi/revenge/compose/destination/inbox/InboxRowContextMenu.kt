@@ -4,7 +4,6 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.LowPriority
 import androidx.compose.material.icons.filled.MeetingRoom
-import androidx.compose.material.icons.filled.Navigation
 import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material.icons.filled.Visibility
 import androidx.compose.material.icons.filled.Window
@@ -41,10 +40,10 @@ import shire.res.generated.resources.action_join
 import shire.res.generated.resources.action_leave
 import shire.res.generated.resources.action_mark_as_read
 import shire.res.generated.resources.action_mark_as_unread
-import shire.res.generated.resources.action_navigate_in_current
 import shire.res.generated.resources.action_navigate_in_new_window
 import shire.res.generated.resources.action_notifications
 import shire.res.generated.resources.action_notifications_all
+import shire.res.generated.resources.action_notifications_all_silent
 import shire.res.generated.resources.action_notifications_default
 import shire.res.generated.resources.action_notifications_mentions
 import shire.res.generated.resources.action_notifications_none
@@ -128,12 +127,6 @@ fun ScopedRoomSummary.contextMenu(inboxViewModel: InboxViewModel, focusId: Uuid)
                 keyboardShortcut = Key.L,
             ),
             ContextMenuActionEntry(
-                Res.string.action_navigate_in_current.toStringHolder(),
-                rememberVectorPainter(Icons.Default.Navigation),
-                Action.NavigationItem.NavigateCurrent,
-                keyboardShortcut = Key.O,
-            ),
-            ContextMenuActionEntry(
                 Res.string.action_navigate_in_new_window.toStringHolder(),
                 rememberVectorPainter(Icons.Default.Window),
                 Action.NavigationItem.NavigateInNewWindow,
@@ -160,6 +153,15 @@ fun ScopedRoomSummary.contextMenu(inboxViewModel: InboxViewModel, focusId: Uuid)
                         actionArgs = persistentListOf(ActionRoomNotificationSetting.All.name),
                         keyboardShortcut = Key.A,
                         decoration = notificationModeCheckMark(RoomNotificationMode.ALL_MESSAGES, notificationSettings),
+                        autoCloseMenu = false,
+                    ),
+                    ContextMenuActionEntry(
+                        Res.string.action_notifications_all_silent.toStringHolder(),
+                        null,
+                        Action.Room.SetRoomNotifications,
+                        actionArgs = persistentListOf(ActionRoomNotificationSetting.AllSilent.name),
+                        keyboardShortcut = Key.S,
+                        decoration = notificationModeCheckMark(RoomNotificationMode.ALL_MESSAGES_SILENT, notificationSettings),
                         autoCloseMenu = false,
                     ),
                     ContextMenuActionEntry(
