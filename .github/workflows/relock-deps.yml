@@ -88,8 +88,8 @@ jobs:
         id: cache_transfer
         if: ${{ always() && !cancelled() && hashFiles('cache-outputs.txt') != '' }}
         env:
-          ATTIC_MAX_CLOSURE_MIB: ${{ vars.ATTIC_MAX_CLOSURE_MIB || '8192' }}
-        run: python3 ci/transfer-attic.py export --directory relock-transfer --manifest cache-outputs.txt
+          MAX_CLOSURE_MIB: ${{ vars.MAX_CLOSURE_MIB || '8192' }}
+        run: python3 ci/transfer-closures.py export --directory relock-transfer --manifest cache-outputs.txt
 
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         if: ${{ always() && !cancelled() && steps.cache_transfer.outcome == 'success' }}
@@ -141,9 +141,9 @@ jobs:
         run: python3 ci/push-niks3.py --outputs niks3-bootstrap-outputs.txt
       - name: Import public data and publish with S3 integrity verification
         env:
-          ATTIC_MAX_CLOSURE_MIB: ${{ vars.ATTIC_MAX_CLOSURE_MIB || '8192' }}
+          MAX_CLOSURE_MIB: ${{ vars.MAX_CLOSURE_MIB || '8192' }}
         run: |
-          python3 ci/transfer-attic.py import --directory relock-transfer
+          python3 ci/transfer-closures.py import --directory relock-transfer
           python3 ci/push-niks3.py --outputs relock-transfer/outputs.txt
       - name: Remove job-local Niks3 reader
         if: ${{ always() }}
